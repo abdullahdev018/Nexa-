@@ -1,0 +1,165 @@
+// Nexa AI — data model.
+//
+// Auth is email/password today, but the shape is deliberately OAuth-ready:
+// credentials live on a separate Account row keyed by (provider,
+// providerAccountId), so adding Google later means inserting another Account
+// for the same User rather than migrating the User table.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+
+  /// Cleared once onboarding completes, so the middleware knows where to send
+  /// a signed-in user who has not finished setup.
+  onboardedAt DateTime?
+
+  /// Free-text description of what the user does, captured during onboarding
+  /// and prepended to the system prompt.
+  role String?
+  /// What they said they want to use Nexa for. Stored as a string array so the
+  /// options can change without a migration.
+  useCases String[] @default([])
+
+  plan Plan @default(FREE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  conversations Conversation[]
+  preferences   Preferences?
+
+  @@index([createdAt])
+}
+
+enum Plan {
+  FREE
+  PRO
+  TEAM
+}
+
+/// One credential per provider. `provider = "credentials"` holds the bcrypt
+/// hash; an OAuth provider would instead carry tokens and leave it null.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  passwordHash      String?
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         Int?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Server-side sessions. Only the SHA-256 of the cookie value is stored, so a
+/// database leak does not hand over live sessions.
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  userAgent  String?
+  ip         String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Preferences {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  /// The model id the composer defaults to, e.g. "nexa-balanced".
+  defaultModel String @default("nexa-balanced")
+  /// Appended to the system prompt on every request.
+  customInstructions String?
+  theme              Theme  @default(SYSTEM)
+  /// Enter sends the message; when false, Enter inserts a newline instead.
+  enterToSend Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+model Conversation {
+  id     String @id @default(cuid())
+  userId String
+  title  String @default("New chat")
+  model  String @default("nexa-balanced")
+
+  pinned     Boolean   @default(false)
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  // The sidebar lists a user's conversations newest-first; this is the index
+  // that query rides on.
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model Message {
+  id             String @id @default(cuid())
+  conversationId String
+  role           Role
+  content        String @db.Text
+
+  /// Populated for assistant messages when the provider reports usage.
+  inputTokens  Int?
+  outputTokens Int?
+  /// Which model produced this message, when it differs from the thread's.
+  model String?
+  /// Set when generation failed; `content` then holds whatever streamed first.
+  error String?
+
+  /// Attachment metadata for user messages: name, kind, mediaType, size. The
+  /// file bytes are deliberately NOT stored — they are sent to the provider
+  /// once and then dropped, so the database never becomes a file store.
+  attachments Json?
+
+  createdAt DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+enum Role {
+  USER
+  ASSISTANT
+  SYSTEM
+}

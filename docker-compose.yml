@@ -1,0 +1,31 @@
+# Postgres for local development.
+#
+#   docker compose up -d      start it
+#   docker compose down       stop it (data is kept in the named volume)
+#   docker compose down -v    stop it and delete the data
+#
+# The credentials match the DATABASE_URL in .env.example, so a fresh clone
+# works with no edits. If you already run Postgres on 5432, change the host
+# side of the port mapping below and in DATABASE_URL.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexa
+      POSTGRES_PASSWORD: nexa
+      POSTGRES_DB: nexa_ai
+    ports:
+      - '5432:5432'
+    volumes:
+      - nexa-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Prisma migrations run as soon as this reports healthy.
+      test: ['CMD-SHELL', 'pg_isready -U nexa -d nexa_ai']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  nexa-pgdata:

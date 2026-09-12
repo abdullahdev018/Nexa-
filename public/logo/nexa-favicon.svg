@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Nexa AI">
+  <defs>
+    <linearGradient id="favBlue" x1="8" y1="56" x2="36" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b74e0"/>
+      <stop offset="1" stop-color="#4cbcff"/>
+    </linearGradient>
+    <linearGradient id="favSilver" x1="54" y1="8" x2="30" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f4f7fc"/>
+      <stop offset="1" stop-color="#93a4bd"/>
+    </linearGradient>
+  </defs>
+
+  <!-- A tab favicon is 16px: the hairline border and the generous tile padding
+       of the full mark both disappear at that size, so this variant drops the
+       border and scales the N to fill the tile. -->
+  <rect width="64" height="64" rx="14" fill="#0b1220"/>
+
+  <g fill="none" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 49 L17 15 L32 32" stroke="url(#favBlue)"/>
+    <path d="M32 32 L47 49 L47 15" stroke="url(#favSilver)"/>
+  </g>
+
+  <circle cx="17" cy="49" r="8.6" fill="#2a9bf5"/>
+  <circle cx="17" cy="49" r="3.4" fill="#0b1220"/>
+  <circle cx="47" cy="15" r="8.6" fill="#e6ecf5"/>
+  <circle cx="47" cy="15" r="3.4" fill="#0b1220"/>
+</svg>

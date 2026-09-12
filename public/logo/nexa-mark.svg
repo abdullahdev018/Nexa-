@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Nexa AI">
+  <defs>
+    <linearGradient id="nexaBlue" x1="14" y1="50" x2="36" y2="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b74e0"/>
+      <stop offset="1" stop-color="#4cbcff"/>
+    </linearGradient>
+    <linearGradient id="nexaSilver" x1="48" y1="14" x2="30" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f4f7fc"/>
+      <stop offset="1" stop-color="#8e9fb8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Tile: the deep navy the mark sits on, with a hairline edge. -->
+  <rect x="1.5" y="1.5" width="61" height="61" rx="16" fill="#0b1220"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="16" fill="none" stroke="#33445e" stroke-width="1.5"/>
+
+  <!-- The N as a traced circuit path, split into two runs meeting at the centre
+       of the diagonal: blue climbs from the lower-left node, silver descends to
+       the upper-right one. -->
+  <g fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 46 L20 18 L32 32" stroke="url(#nexaBlue)"/>
+    <path d="M32 32 L44 46 L44 18" stroke="url(#nexaSilver)"/>
+  </g>
+
+  <!-- Nodes terminating each run. -->
+  <circle cx="20" cy="46" r="6.5" fill="#2a9bf5"/>
+  <circle cx="20" cy="46" r="2.6" fill="#0b1220"/>
+  <circle cx="44" cy="18" r="6.5" fill="#e6ecf5"/>
+  <circle cx="44" cy="18" r="2.6" fill="#0b1220"/>
+</svg>
