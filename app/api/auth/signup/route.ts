@@ -47,5 +47,7 @@ export async function POST(request: Request) {
     ip: ip === 'unknown' ? null : ip,
   })
 
-  return NextResponse.json({ user, next: '/onboarding' }, { status: 201 })
+  // Straight into the product — nothing stands between signing up and
+  // using it.
+  return NextResponse.json({ user, next: '/chat' }, { status: 201 })
 }

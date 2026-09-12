@@ -77,6 +77,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     user,
-    next: user.onboardedAt ? '/chat' : '/onboarding',
+    next: '/chat',
   })
 }

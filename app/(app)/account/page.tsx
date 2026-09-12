@@ -81,7 +81,7 @@ export default async function AccountPage() {
             )}
           </div>
 
-          {(account.role || account.useCases.length > 0) && (
+          {account.role || account.useCases.length > 0 ? (
             <dl className="mt-5 space-y-3 text-[14px]">
               {account.role && (
                 <div className="flex gap-3">
@@ -96,6 +96,21 @@ export default async function AccountPage() {
                 </div>
               )}
             </dl>
+          ) : (
+            /* Personalising is optional and skipped at sign-up, so this is the
+               way back to it for anyone who wants it. */
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-ink-200 p-5">
+              <div>
+                <p className="text-[14.5px] font-medium text-ink-900">Personalise Nexa</p>
+                <p className="mt-1 text-[14px] text-ink-600">
+                  Tell Nexa what you do, and it will pitch answers correctly from the first
+                  message. Takes about a minute.
+                </p>
+              </div>
+              <LinkButton href="/onboarding" variant="secondary" size="sm">
+                Set it up
+              </LinkButton>
+            </div>
           )}
 
           <p className="mt-4 text-[13px] text-ink-500">

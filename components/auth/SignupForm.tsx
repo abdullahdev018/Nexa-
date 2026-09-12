@@ -24,7 +24,7 @@ export function SignupForm() {
     if (!result) return
 
     // The session cookie was set by the response; refresh so server components
-    // see it, then move on to onboarding.
+    // see it, then go straight to the chat.
     router.replace(result.next)
     router.refresh()
   }
