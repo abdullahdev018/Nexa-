@@ -77,8 +77,9 @@ export async function POST(request: Request) {
 
   const provider = getProvider()
   if (!provider.configured) {
+    // Names the variable, never a value — this string reaches the browser.
     return apiError(
-      'Nexa is not connected to an AI provider yet. Set ANTHROPIC_API_KEY in the server environment.',
+      'Nexa is not connected to an AI provider yet. Set OPENROUTER_API_KEY in the server environment.',
       503,
     )
   }

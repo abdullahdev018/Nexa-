@@ -16,13 +16,18 @@ through a server route.
 You need Node 20+ and either Docker or a local PostgreSQL.
 
 ```bash
-cp .env.example .env       # then add your ANTHROPIC_API_KEY
+# .env.local already exists here; only needed on a fresh clone:
+# cp .env.example .env.local
 npm install                # runs prisma generate
 npm run db:up              # starts Postgres in Docker
 npm run db:deploy          # creates the tables
 npm run db:seed            # optional demo account
+npm run verify:key         # confirms the provider accepts your key
 npm run dev                # http://localhost:3000
 ```
+
+Your key goes on **line 20 of `.env.local`**, the line marked with a 👇 arrow.
+[`docs/ADD-API-KEY.md`](docs/ADD-API-KEY.md) walks through it step by step.
 
 The seed creates `demo@nexa.local` / `demopass123` with two conversations.
 
