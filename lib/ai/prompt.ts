@@ -17,6 +17,8 @@ export interface PromptContext {
   useCases?: string[]
   /** Standing preferences from Settings. */
   customInstructions?: string | null
+  /** The workspace's brand, already rendered by `brandContextBlock`. */
+  brand?: string | null
 }
 
 /**
@@ -36,6 +38,8 @@ export function buildSystemPrompt(context: PromptContext): string {
   if (about.length > 0) {
     parts.push(`About the person you are talking to:\n${about.join('\n')}`)
   }
+
+  if (context.brand) parts.push(context.brand)
 
   const custom = context.customInstructions?.trim()
   if (custom) {

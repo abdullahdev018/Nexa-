@@ -52,12 +52,19 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
 }
 
 /**
- * Best-effort client address. Only trusted when the app runs behind a proxy
- * that sets it (Vercel does); otherwise every caller shares one bucket, which
- * fails closed rather than open.
+ * Best-effort client address, for rate limiting only.
+ *
+ * Headers the hosting platform sets itself come first: a client can write any
+ * `X-Forwarded-For` it likes, and if the first entry were trusted it could
+ * rotate it for a fresh bucket on every request. `x-vercel-forwarded-for` and
+ * `x-real-ip` are overwritten by Vercel's edge. Only without them is the
+ * right-most `X-Forwarded-For` hop used — the one the nearest proxy appended.
+ * With none at all, every caller shares one bucket: it fails closed.
  */
 export function clientIp(request: Request): string {
+  const platform = request.headers.get('x-vercel-forwarded-for') ?? request.headers.get('x-real-ip')
+  if (platform) return platform.split(',')[0].trim()
   const forwarded = request.headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0].trim()
-  return request.headers.get('x-real-ip') ?? 'unknown'
+  if (forwarded) return forwarded.split(',').at(-1)!.trim()
+  return 'unknown'
 }

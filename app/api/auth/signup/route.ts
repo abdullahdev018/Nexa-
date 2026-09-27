@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { hashPassword } from '@/lib/auth/password'
 import { createSession } from '@/lib/auth/session'
+import { createWorkspaceForUser, defaultWorkspaceName } from '@/lib/workspace/provision'
 import { signupSchema } from '@/lib/auth/validation'
 import { apiError, readJson, validationError } from '@/lib/utils/api'
 import { clientIp, rateLimit } from '@/lib/utils/rate-limit'
@@ -42,6 +43,13 @@ export async function POST(request: Request) {
     select: { id: true, email: true, name: true, onboardedAt: true },
   })
 
+  // A workspace is not optional: it is where everything the person makes
+  // will live, and it carries the plan and the credit balance.
+  await createWorkspaceForUser(prisma, {
+    userId: user.id,
+    name: defaultWorkspaceName(user.name, user.email),
+  })
+
   await createSession(user.id, {
     userAgent: request.headers.get('user-agent'),
     ip: ip === 'unknown' ? null : ip,
@@ -49,5 +57,5 @@ export async function POST(request: Request) {
 
   // Straight into the product — nothing stands between signing up and
   // using it.
-  return NextResponse.json({ user, next: '/chat' }, { status: 201 })
+  return NextResponse.json({ user, next: '/dashboard' }, { status: 201 })
 }

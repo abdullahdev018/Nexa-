@@ -1,4 +1,6 @@
 /** Shapes shared between the server components and the chat client. */
+import type { PlanId } from '@/lib/billing/plans'
+
 
 export interface AttachmentMeta {
   name: string
@@ -34,7 +36,8 @@ export interface CurrentUser {
   id: string
   email: string
   name: string | null
-  plan: 'FREE' | 'PRO' | 'TEAM'
+  /** The ACTIVE WORKSPACE's plan — billing is per workspace, not per person. */
+  plan: PlanId
 }
 
 export interface UserPreferences {
@@ -42,4 +45,20 @@ export interface UserPreferences {
   customInstructions: string | null
   theme: 'LIGHT' | 'DARK' | 'SYSTEM'
   enterToSend: boolean
+}
+
+/** The workspace the person is currently acting in. */
+export interface WorkspaceSummary {
+  id: string
+  name: string
+  plan: PlanId
+  role: 'OWNER' | 'ADMIN' | 'MEMBER'
+}
+
+/** Credit standing, shaped for the client. */
+export interface CreditSummary {
+  balance: number
+  monthlyAllowance: number
+  /** ISO — when the balance next resets. */
+  periodEnd: string
 }

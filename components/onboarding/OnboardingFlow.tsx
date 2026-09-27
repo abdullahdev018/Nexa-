@@ -13,25 +13,25 @@ import { useApiForm } from '@/lib/hooks/useApiForm'
 import { cn } from '@/lib/utils/cn'
 
 const ROLE_SUGGESTIONS = [
-  'Software engineer',
-  'Product manager',
-  'Designer',
   'Marketer',
+  'Business owner',
   'Founder',
-  'Student',
-  'Researcher',
-  'Writer',
+  'E-commerce seller',
+  'Creator',
+  'Agency',
+  'Social media manager',
+  'Freelancer',
 ]
 
 const USE_CASES = [
-  'Writing and editing',
-  'Coding and debugging',
-  'Research and summarising',
-  'Data and analysis',
-  'Planning and strategy',
-  'Learning something new',
-  'Customer communication',
-  'Brainstorming ideas',
+  'Campaign planning',
+  'Social media content',
+  'Ad copy',
+  'Video scripts',
+  'Product launches',
+  'Content calendar',
+  'Brand voice',
+  'Reading my results',
 ]
 
 const STEPS = ['About you', 'What you need', 'How Nexa thinks'] as const

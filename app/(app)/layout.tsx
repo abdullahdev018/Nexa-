@@ -1,46 +1,26 @@
-import { prisma } from '@/lib/db/prisma'
-import { requireUser } from '@/lib/auth/guards'
-import { AppShell } from '@/components/AppShell'
-import type { ConversationSummary } from '@/lib/types'
+import type { ReactNode } from 'react'
+import { requireWorkspace } from '@/lib/auth/workspace'
+import { getCreditSnapshot } from '@/lib/billing/credits'
+import { AppShell } from '@/components/app/AppShell'
 
 /**
- * Every signed-in route shares this layout, so the sidebar and its data are
- * fetched once per navigation rather than once per page component.
+ * Every signed-in route shares this layout, so the navigation and the
+ * workspace it belongs to are resolved once per navigation rather than once
+ * per page component.
  */
-export default async function AppLayout({ children }: LayoutProps<'/'>) {
-  const user = await requireUser()
-
-  const conversations = await prisma.conversation.findMany({
-    where: { userId: user.id, archivedAt: null },
-    orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
-    take: 200,
-    select: {
-      id: true,
-      title: true,
-      model: true,
-      pinned: true,
-      archivedAt: true,
-      createdAt: true,
-      updatedAt: true,
-      _count: { select: { messages: true } },
-    },
-  })
-
-  const summaries: ConversationSummary[] = conversations.map((conversation) => ({
-    id: conversation.id,
-    title: conversation.title,
-    model: conversation.model,
-    pinned: conversation.pinned,
-    archivedAt: conversation.archivedAt?.toISOString() ?? null,
-    createdAt: conversation.createdAt.toISOString(),
-    updatedAt: conversation.updatedAt.toISOString(),
-    messageCount: conversation._count.messages,
-  }))
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const { user, workspace, role } = await requireWorkspace()
+  const credits = await getCreditSnapshot(workspace.id, workspace.plan)
 
   return (
     <AppShell
-      user={{ id: user.id, email: user.email, name: user.name, plan: user.plan }}
-      conversations={summaries}
+      user={{ id: user.id, email: user.email, name: user.name, plan: workspace.plan }}
+      workspace={{ id: workspace.id, name: workspace.name, plan: workspace.plan, role }}
+      credits={{
+        balance: credits.balance,
+        monthlyAllowance: credits.monthlyAllowance,
+        periodEnd: credits.periodEnd.toISOString(),
+      }}
     >
       {children}
     </AppShell>

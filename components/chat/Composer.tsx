@@ -6,6 +6,7 @@ import type { Attachment } from '@/lib/ai/types'
 import { readAttachment } from '@/lib/hooks/useChatStream'
 import { cn } from '@/lib/utils/cn'
 import { ModelPicker } from './ModelPicker'
+import type { PlanId } from '@/lib/billing/plans'
 
 const MAX_ATTACHMENTS = 5
 const MAX_BYTES = 5 * 1024 * 1024
@@ -34,7 +35,7 @@ export function Composer({
   streaming: boolean
   model: string
   onModelChange: (modelId: string) => void
-  plan: 'FREE' | 'PRO' | 'TEAM'
+  plan: PlanId
   enterToSend: boolean
   autoFocus?: boolean
   /** Seeds the box — the parent remounts the composer to apply a new one. */

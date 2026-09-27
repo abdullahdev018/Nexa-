@@ -9,7 +9,22 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       // The signed-in surface holds nothing worth indexing and every route
       // there needs a session anyway.
-      disallow: ['/chat', '/settings', '/account', '/onboarding', '/api/'],
+      disallow: [
+        '/dashboard',
+        '/campaigns',
+        '/content',
+        '/video',
+        '/ads',
+        '/brand',
+        '/calendar',
+        '/analytics',
+        '/research',
+        '/chat',
+        '/settings',
+        '/account',
+        '/onboarding',
+        '/api/',
+      ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   }

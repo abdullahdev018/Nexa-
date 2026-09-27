@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
-import { getCurrentUser } from '@/lib/auth/session'
+import { getWorkspaceContext } from '@/lib/auth/workspace'
 import { apiError, readJson, validationError } from '@/lib/utils/api'
 
 interface Context {
@@ -10,13 +10,15 @@ interface Context {
 
 /** Full thread with messages, for opening a conversation. */
 export async function GET(_request: Request, { params }: Context) {
-  const user = await getCurrentUser()
-  if (!user) return apiError('Not signed in.', 401)
+  const context = await getWorkspaceContext()
+  if (!context) return apiError('Not signed in.', 401)
+  const { user, workspace } = context
 
   const { id } = await params
   const conversation = await prisma.conversation.findFirst({
-    // Scoped by userId as well as id, so guessing an id reveals nothing.
-    where: { id, userId: user.id },
+    // Scoped by user and workspace as well as id, like every other tenant read,
+    // so guessing an id reveals nothing.
+    where: { id, userId: user.id, workspaceId: workspace.id },
     select: {
       id: true,
       title: true,
@@ -54,15 +56,16 @@ const updateSchema = z.object({
 })
 
 export async function PATCH(request: Request, { params }: Context) {
-  const user = await getCurrentUser()
-  if (!user) return apiError('Not signed in.', 401)
+  const context = await getWorkspaceContext()
+  if (!context) return apiError('Not signed in.', 401)
+  const { user, workspace } = context
 
   const { id } = await params
   const parsed = updateSchema.safeParse(await readJson(request))
   if (!parsed.success) return validationError(parsed.error)
 
   const owned = await prisma.conversation.findFirst({
-    where: { id, userId: user.id },
+    where: { id, userId: user.id, workspaceId: workspace.id },
     select: { id: true },
   })
   if (!owned) return apiError('Conversation not found.', 404)
@@ -81,11 +84,12 @@ export async function PATCH(request: Request, { params }: Context) {
 }
 
 export async function DELETE(_request: Request, { params }: Context) {
-  const user = await getCurrentUser()
-  if (!user) return apiError('Not signed in.', 401)
+  const context = await getWorkspaceContext()
+  if (!context) return apiError('Not signed in.', 401)
+  const { user, workspace } = context
 
   const { id } = await params
-  const deleted = await prisma.conversation.deleteMany({ where: { id, userId: user.id } })
+  const deleted = await prisma.conversation.deleteMany({ where: { id, userId: user.id, workspaceId: workspace.id } })
   if (deleted.count === 0) return apiError('Conversation not found.', 404)
 
   return NextResponse.json({ ok: true })

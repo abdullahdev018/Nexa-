@@ -1,5 +1,11 @@
 // Nexa AI — data model.
 //
+// Nexa is a marketing workspace: a person signs in, but everything they make
+// belongs to a Workspace. Workspace is the tenancy root and the billing unit,
+// which is what lets the Agency plan hold several client workspaces and what
+// makes cross-tenant access a schema-level impossibility rather than a rule
+// every query has to remember.
+//
 // Auth is email/password today, but the shape is deliberately OAuth-ready:
 // credentials live on a separate Account row keyed by (provider,
 // providerAccountId), so adding Google later means inserting another Account
@@ -14,6 +20,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -26,13 +36,16 @@ model User {
   onboardedAt DateTime?
 
   /// Free-text description of what the user does, captured during onboarding
-  /// and prepended to the system prompt.
+  /// and folded into the system prompt.
   role String?
   /// What they said they want to use Nexa for. Stored as a string array so the
   /// options can change without a migration.
   useCases String[] @default([])
 
-  plan Plan @default(FREE)
+  /// Which workspace to open on sign-in. Nullable so a user whose last
+  /// workspace was deleted still resolves — the guard falls back to their
+  /// first membership.
+  lastWorkspaceId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -42,13 +55,12 @@ model User {
   conversations Conversation[]
   preferences   Preferences?
 
-  @@index([createdAt])
-}
+  ownedWorkspaces Workspace[]         @relation("WorkspaceOwner")
+  memberships     Membership[]
+  creditSpends    CreditTransaction[]
+  aiUsage         AIUsage[]
 
-enum Plan {
-  FREE
-  PRO
-  TEAM
+  @@index([createdAt])
 }
 
 /// One credential per provider. `provider = "credentials"` holds the bcrypt
@@ -112,11 +124,721 @@ enum Theme {
   SYSTEM
 }
 
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+/// The tenancy root. Every piece of marketing work carries a workspaceId, and
+/// every query scopes through the caller's membership — so changing an id in a
+/// URL cannot reach another tenant's data.
+model Workspace {
+  id      String @id @default(cuid())
+  name    String
+  slug    String @unique
+  ownerId String
+
+  /// The billing plan. Lives here, not on User, because an Agency account pays
+  /// once and owns many client workspaces.
+  plan Plan @default(FREE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner       User         @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+
+  subscription  Subscription?
+  creditBalance CreditBalance?
+
+  creditTransactions CreditTransaction[]
+  brands             Brand[]
+  products           Product[]
+  campaigns          Campaign[]
+  campaignAssets     CampaignAsset[]
+  contents           Content[]
+  videos             Video[]
+  ads                Ad[]
+  calendarItems      CalendarItem[]
+  analyticsRecords   AnalyticsRecord[]
+  competitors        Competitor[]
+  aiUsage            AIUsage[]
+  conversations      Conversation[]
+
+  @@index([ownerId])
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  AGENCY
+}
+
+model Membership {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ---------------------------------------------------------------------------
+// Billing and credits
+// ---------------------------------------------------------------------------
+
+/// Mirrors the state held by the payment provider. It stores provider
+/// IDENTIFIERS only — never a key, secret or token. Those stay in the server
+/// environment; there is no encrypted-secret store here, so nothing secret is
+/// allowed in this table.
+model Subscription {
+  id          String @id @default(cuid())
+  workspaceId String @unique
+
+  plan     Plan               @default(FREE)
+  status   SubscriptionStatus @default(ACTIVE)
+  interval BillingInterval    @default(MONTHLY)
+
+  /// Null until a payment provider is configured and a checkout completes.
+  /// A row with provider = null has never been paid for, and the UI must not
+  /// present it as an active paid subscription.
+  provider               String?
+  providerCustomerId     String?
+  providerSubscriptionId String?
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+/// Current credit standing for a workspace. The running total is denormalised
+/// here so the dashboard is one read, while CreditTransaction keeps the
+/// auditable history that explains it.
+model CreditBalance {
+  id          String @id @default(cuid())
+  workspaceId String @unique
+
+  balance          Int @default(0)
+  /// What the plan grants each period. Kept as a column rather than read from
+  /// config at spend time, so changing a plan's allowance never retroactively
+  /// rewrites what a workspace was actually given.
+  monthlyAllowance Int @default(0)
+
+  periodStart DateTime @default(now())
+  periodEnd   DateTime
+
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+/// Append-only ledger. Positive amounts add credit, negative amounts spend it.
+model CreditTransaction {
+  id          String @id @default(cuid())
+  workspaceId String
+
+  amount       Int
+  kind         CreditTransactionKind
+  /// Human-readable cause, e.g. "Campaign generation".
+  reason       String
+  /// Balance immediately after this row was applied, so history can be read
+  /// without replaying every prior row.
+  balanceAfter Int
+
+  /// Who triggered it. Null for system grants and expiries.
+  userId   String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+enum CreditTransactionKind {
+  GRANT
+  SPEND
+  REFUND
+  ADJUSTMENT
+  EXPIRY
+}
+
+// ---------------------------------------------------------------------------
+// Brand and product
+// ---------------------------------------------------------------------------
+
+/// What Nexa knows about the voice it is writing in. Every generation reads
+/// this, which is what stops output sounding like a generic assistant.
+model Brand {
+  id          String @id @default(cuid())
+  workspaceId String
+
+  name        String
+  logoUrl     String?
+  website     String?
+  description String? @db.Text
+
+  /// [{ name, hex }] — a list so a brand can carry as many as it needs.
+  colors Json @default("[]")
+  /// [{ role, family }] e.g. { role: "heading", family: "Inter" }.
+  fonts  Json @default("[]")
+
+  toneOfVoice String?
+  audience    String? @db.Text
+  guidelines  String? @db.Text
+
+  /// The brand used when a generation does not name one.
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  products  Product[]
+  campaigns Campaign[]
+  contents  Content[]
+
+  @@index([workspaceId])
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  workspaceId String
+  brandId     String?
+
+  name        String
+  description String? @db.Text
+  url         String?
+  imageUrl    String?
+  category    String?
+  price       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand     Brand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  campaigns Campaign[]
+  videos    Video[]
+
+  @@index([workspaceId])
+  @@index([brandId])
+}
+
+// ---------------------------------------------------------------------------
+// Campaigns
+// ---------------------------------------------------------------------------
+
+model Campaign {
+  id          String  @id @default(cuid())
+  workspaceId String
+  brandId     String?
+  productId   String?
+
+  name   String
+  goal   CampaignGoal
+  style  CampaignStyle
+  status CampaignStatus @default(DRAFT)
+
+  /// Step 3 of the wizard. Flat columns rather than a blob because the
+  /// audience is read back into the form for editing and re-generation.
+  audienceAgeRange     String?
+  audienceLocation     String?
+  audienceInterests    String[] @default([])
+  audienceCustomerType String?
+  audiencePainPoints   String?  @db.Text
+
+  platforms Platform[] @default([])
+
+  /// The generated plan as returned by the model, kept whole so the workspace
+  /// view can render it without a migration every time a section is added.
+  /// Null until a generation has actually succeeded — an unset value is what
+  /// the UI reads to know nothing was generated, so it can never claim
+  /// otherwise.
+  strategy    Json?
+  generatedAt DateTime?
+  /// Set when the last generation attempt failed, so the UI reports the
+  /// failure instead of showing an empty campaign as if it were finished.
+  lastError   String?
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brand            Brand?            @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  product          Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  assets           CampaignAsset[]
+  contents         Content[]
+  videos           Video[]
+  ads              Ad[]
+  calendarItems    CalendarItem[]
+  analyticsRecords AnalyticsRecord[]
+
+  @@index([workspaceId, updatedAt(sort: Desc)])
+  @@index([productId])
+  @@index([brandId])
+}
+
+enum CampaignGoal {
+  SALES
+  LEADS
+  BRAND_AWARENESS
+  PRODUCT_LAUNCH
+  ENGAGEMENT
+  WEBSITE_TRAFFIC
+}
+
+enum CampaignStyle {
+  PROFESSIONAL
+  UGC
+  EDUCATIONAL
+  STORYTELLING
+  PROMOTIONAL
+  LUXURY
+  FUN
+  MINIMAL
+}
+
+enum CampaignStatus {
+  DRAFT
+  GENERATING
+  READY
+  ACTIVE
+  ARCHIVED
+}
+
+enum Platform {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  YOUTUBE
+  WHATSAPP
+  GOOGLE
+}
+
+/// One addressable piece of a generated campaign — a hook, an angle, a content
+/// idea. Broken out of `Campaign.strategy` so a single hook can be edited,
+/// copied, reordered or turned into Content without rewriting the blob.
+model CampaignAsset {
+  id          String @id @default(cuid())
+  campaignId  String
+  workspaceId String
+
+  kind     CampaignAssetKind
+  title    String?
+  body     String            @db.Text
+  position Int               @default(0)
+  /// Structured facts about the piece that are not prose — the platform and
+  /// format of a content idea, the day of a calendar slot, hashtags. Null for
+  /// kinds that are only text.
+  meta     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, kind, position])
+  @@index([workspaceId])
+}
+
+enum CampaignAssetKind {
+  STRATEGY
+  AUDIENCE_SUMMARY
+  POSITIONING
+  MARKETING_ANGLE
+  HOOK
+  ALT_HOOK
+  CONTENT_IDEA
+  VIDEO_CONCEPT
+  AD_COPY
+  SOCIAL_CAPTION
+  CTA
+  CONTENT_CALENDAR
+}
+
+// ---------------------------------------------------------------------------
+// Content Studio
+// ---------------------------------------------------------------------------
+
+model Content {
+  id          String  @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+  brandId     String?
+
+  platform Platform
+  format   ContentFormat
+
+  topic String?
+  title String?
+  body  String  @db.Text
+
+  /// Variations generated together share a group id, so "regenerate" can
+  /// replace a set and the UI can show them side by side.
+  variantGroup String?
+
+  status ContentStatus @default(DRAFT)
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign      Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  brand         Brand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  calendarItems CalendarItem[]
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([campaignId])
+  @@index([variantGroup])
+}
+
+enum ContentFormat {
+  POST
+  REEL
+  STORY
+  SHORT
+  CAROUSEL
+  CAPTION
+  AD
+}
+
+enum ContentStatus {
+  DRAFT
+  READY
+  SCHEDULED
+  PUBLISHED
+}
+
+// ---------------------------------------------------------------------------
+// AI Video
+// ---------------------------------------------------------------------------
+
+/// A video is two separable things: a PLAN, which Nexa can always write, and a
+/// RENDER, which requires a video provider that may not exist. They are stored
+/// apart on purpose — `plan` being present never implies a file was produced,
+/// and `renderStatus` defaults to NOT_CONFIGURED so the honest state is the
+/// state a row is born in.
+model Video {
+  id          String  @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+  productId   String?
+
+  type     VideoType
+  goal     String?
+  audience String?
+  tone     String?
+  platform Platform?
+
+  durationSeconds Int?
+
+  title String?
+  /// Hook, scenes, voiceover, visual directions, on-screen text, CTA.
+  plan  Json?
+
+  renderStatus   VideoRenderStatus @default(NOT_CONFIGURED)
+  renderProvider String?
+  renderJobId    String?
+  renderUrl      String?
+  renderError    String?
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  product   Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([campaignId])
+}
+
+enum VideoType {
+  PRODUCT_SHOWCASE
+  UGC
+  PROBLEM_SOLUTION
+  TESTIMONIAL
+  PROMOTIONAL
+  EDUCATIONAL
+  FOUNDER_STORY
+  PRODUCT_LAUNCH
+}
+
+enum VideoRenderStatus {
+  /// No video provider is configured. This is the default and the truth today.
+  NOT_CONFIGURED
+  PENDING
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Ad Studio
+// ---------------------------------------------------------------------------
+
+model Ad {
+  id          String  @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+
+  platform AdPlatform
+
+  primaryText     String   @db.Text
+  headlines       String[] @default([])
+  descriptions    String[] @default([])
+  cta             String?
+  audienceAngle   String?  @db.Text
+  creativeConcept String?  @db.Text
+
+  variantGroup String?
+  status       ContentStatus @default(DRAFT)
+
+  /// Nexa writes ads; it does not spend money. Launching requires a real
+  /// integration AND an explicit confirmation, so the default state says
+  /// plainly that nothing has been launched.
+  launchState AdLaunchState @default(NOT_LAUNCHED)
+  /// The ad-platform object id, once a real integration has created one.
+  externalId  String?
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([campaignId])
+  @@index([variantGroup])
+}
+
+enum AdPlatform {
+  META
+  GOOGLE
+  TIKTOK
+}
+
+enum AdLaunchState {
+  NOT_LAUNCHED
+  PROVIDER_NOT_CONFIGURED
+  AWAITING_CONFIRMATION
+  LAUNCHED
+}
+
+// ---------------------------------------------------------------------------
+// Marketing calendar
+// ---------------------------------------------------------------------------
+
+model CalendarItem {
+  id          String  @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+  contentId   String?
+
+  platform Platform
+  format   ContentFormat
+  title    String
+  notes    String?       @db.Text
+
+  status       ContentStatus @default(DRAFT)
+  scheduledFor DateTime
+  /// Only ever set by a real publish through a connected integration. Nothing
+  /// in the app sets this speculatively.
+  publishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  content   Content?  @relation(fields: [contentId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, scheduledFor])
+  @@index([campaignId])
+}
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+/// One platform's numbers for one day. Derived figures — CTR, CPC, cost per
+/// lead — are computed on read rather than stored, so they can never disagree
+/// with the counts they come from.
+///
+/// `source` is not decoration: it is how the UI is structurally prevented from
+/// showing demo numbers as if an ad account were connected.
+model AnalyticsRecord {
+  id          String  @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+
+  source   DataSource
+  platform Platform?
+  date     DateTime
+
+  reach       Int    @default(0)
+  impressions Int    @default(0)
+  clicks      Int    @default(0)
+  leads       Int    @default(0)
+  conversions Int    @default(0)
+  /// Minor units, to keep money out of floating point.
+  spendCents  Int    @default(0)
+  currency    String @default("USD")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, date])
+  @@index([campaignId])
+}
+
+enum DataSource {
+  /// Sample numbers Nexa generated to show the shape of the page.
+  DEMO
+  /// Numbers the user typed or uploaded themselves.
+  IMPORTED
+  /// Numbers pulled from a genuinely connected ad account.
+  CONNECTED
+}
+
+// ---------------------------------------------------------------------------
+// Competitor research
+// ---------------------------------------------------------------------------
+
+model Competitor {
+  id          String @id @default(cuid())
+  workspaceId String
+
+  name String?
+  url  String
+
+  status     ResearchStatus @default(PENDING)
+  /// Positioning, messaging, offering, content themes, CTA patterns, gaps.
+  analysis   Json?
+  analyzedAt DateTime?
+  error      String?
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+}
+
+enum ResearchStatus {
+  PENDING
+  RESEARCHING
+  COMPLETE
+  FAILED
+  /// No web/search provider is configured, so no research can be done.
+  PROVIDER_NOT_CONFIGURED
+}
+
+// ---------------------------------------------------------------------------
+// AI usage
+// ---------------------------------------------------------------------------
+
+/// Every model call, successful or not. Separate from CreditTransaction
+/// because usage is a technical record (tokens, model, provider) while credit
+/// is a commercial one — and a failed call is logged here but charged nowhere.
+model AIUsage {
+  id          String  @id @default(cuid())
+  workspaceId String
+  userId      String?
+
+  feature  AIFeature
+  provider String
+  model    String
+
+  inputTokens    Int @default(0)
+  outputTokens   Int @default(0)
+  creditsCharged Int @default(0)
+
+  success   Boolean @default(true)
+  /// The CLASS of failure only — never an upstream body, which can echo
+  /// request content or a credential.
+  errorKind String?
+
+  createdAt DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+enum AIFeature {
+  CHAT
+  CAMPAIGN
+  CONTENT
+  VIDEO_PLAN
+  AD
+  COMPETITOR
+  CALENDAR
+  INSIGHTS
+}
+
+// ---------------------------------------------------------------------------
+// AI Assistant (chat)
+// ---------------------------------------------------------------------------
+
 model Conversation {
-  id     String @id @default(cuid())
-  userId String
-  title  String @default("New chat")
-  model  String @default("nexa-balanced")
+  id          String @id @default(cuid())
+  userId      String
+  workspaceId String
+  title       String @default("New chat")
+  model       String @default("nexa-balanced")
 
   pinned     Boolean   @default(false)
   archivedAt DateTime?
@@ -124,11 +846,13 @@ model Conversation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages Message[]
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  messages  Message[]
 
-  // The sidebar lists a user's conversations newest-first; this is the index
-  // that query rides on.
+  // The sidebar lists a workspace's conversations newest-first; this is the
+  // index that query rides on.
+  @@index([workspaceId, updatedAt(sort: Desc)])
   @@index([userId, updatedAt(sort: Desc)])
 }
 

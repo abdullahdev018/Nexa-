@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
-import { requireUser } from '@/lib/auth/guards'
+import { requireWorkspace } from '@/lib/auth/workspace'
 import { DEFAULT_MODEL_ID } from '@/lib/ai/models'
 import { PageHeader } from '@/components/settings/PageHeader'
 import { SettingsForm } from '@/components/settings/SettingsForm'
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 
 export default async function SettingsPage() {
-  const user = await requireUser()
+  const { user, workspace } = await requireWorkspace()
 
   const stored = await prisma.preferences.findUnique({
     where: { userId: user.id },
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
           title="Settings"
           description="How Nexa behaves for you. These apply to every conversation."
         />
-        <SettingsForm preferences={preferences} plan={user.plan} />
+        <SettingsForm preferences={preferences} plan={workspace.plan} />
       </div>
     </div>
   )

@@ -13,12 +13,12 @@ export default function NotFound() {
         We couldn&apos;t find that page
       </h1>
       <p className="mt-3 max-w-md text-[16px] leading-relaxed text-ink-600">
-        The link may be broken, or the conversation may have been deleted.
+        The link may be broken, or what it pointed to may have been deleted.
       </p>
 
       <div className="mt-8 flex flex-col gap-2.5 sm:flex-row">
-        <LinkButton href="/chat" size="lg">
-          Go to Nexa
+        <LinkButton href="/dashboard" size="lg">
+          Go to your dashboard
         </LinkButton>
         <LinkButton href="/" variant="secondary" size="lg">
           Back to home

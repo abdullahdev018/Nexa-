@@ -1,3 +1,4 @@
+import { planIncludes, type PlanId } from '@/lib/billing/plans'
 import type { NexaModel } from './types'
 
 /**
@@ -35,7 +36,7 @@ export function getModel(id: string | null | undefined): NexaModel {
   return NEXA_MODELS.find((model) => model.id === id) ?? NEXA_MODELS[1]
 }
 
-/** Free accounts may select a Pro tier in the UI, but not actually send to it. */
-export function canUseModel(model: NexaModel, plan: 'FREE' | 'PRO' | 'TEAM'): boolean {
-  return model.requiresPlan === 'FREE' || plan !== 'FREE'
+/** A locked tier is still shown in the picker, but cannot be sent to. */
+export function canUseModel(model: NexaModel, plan: PlanId): boolean {
+  return planIncludes(plan, model.requiresPlan)
 }

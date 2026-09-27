@@ -4,8 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Nexa AI',
     short_name: 'Nexa',
-    description: 'Think faster. Create more. An AI assistant built for everyday work.',
-    start_url: '/chat',
+    description: 'Your AI marketing team. Give Nexa your product; it builds your marketing campaign.',
+    start_url: '/dashboard',
     scope: '/',
     display: 'standalone',
     background_color: '#0b1220',

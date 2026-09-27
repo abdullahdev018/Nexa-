@@ -1,19 +1,26 @@
 # Nexa AI
 
-**Think faster. Create more.**
+**Your AI Marketing Team.** Give Nexa your product; Nexa builds your marketing campaign.
 
-A production-shaped AI assistant: marketing site, email/password accounts,
-onboarding, a streaming chat app with saved history, settings and account
-management. Built with Next.js, TypeScript, Tailwind, Prisma and PostgreSQL.
+A multi-tenant SaaS for solo marketers, small businesses, shops, creators and
+small agencies: Brand Kit, a campaign generator, Content Studio, AI video
+plans, Ad Studio, a marketing calendar, analytics with Nexa Insights, and an AI
+assistant that knows the brand — on monthly credits, per workspace. Built with
+Next.js, TypeScript, Tailwind, Prisma and PostgreSQL.
 
 The AI provider key never reaches the browser — every model request goes
 through a server route.
+
+**Nothing is faked.** Nexa is not connected to any social, ad, video or payment
+provider, and every screen says so instead of pretending. Each of those lines
+lives in one place: `lib/video/render.ts`, `lib/ads/launch.ts`,
+`lib/billing/payments.ts`, and `CALENDAR_NOTICE` in `lib/calendar/plan.ts`.
 
 ---
 
 ## Running it
 
-You need Node 20+ and either Docker or a local PostgreSQL.
+You need Node 20+ and a PostgreSQL database — Docker or a local install.
 
 ```bash
 # .env.local already exists here; only needed on a fresh clone:
@@ -26,6 +33,11 @@ npm run verify:key         # confirms the provider accepts your key
 npm run dev                # http://localhost:3000
 ```
 
+To test the paid plans' features locally, start with
+`NEXA_DEV_PLAN_SWITCH=1 npm run dev`: `/billing` then offers a development-only
+plan switch. It never runs in production and is recorded in the credit
+history as not a purchase.
+
 Your key goes on **line 20 of `.env.local`**, the line marked with a 👇 arrow.
 [`docs/ADD-API-KEY.md`](docs/ADD-API-KEY.md) walks through it step by step.
 
@@ -34,9 +46,8 @@ The seed creates `demo@nexa.local` / `demopass123` with two conversations.
 **Without Docker**, point `DATABASE_URL` at any PostgreSQL instance and skip
 `npm run db:up`.
 
-**Without an API key**, everything works except generating replies: the chat
-route answers `503` with an explanation, and the UI shows it rather than
-pretending. Nothing is faked.
+**Without an API key**, everything works except generating: the AI routes
+answer `503` with an explanation, and the UI shows it rather than pretending.
 
 ### Scripts
 
@@ -52,6 +63,7 @@ pretending. Nothing is faked.
 | `npm run db:deploy` | Apply existing migrations (use this in CI/production) |
 | `npm run db:studio` | Prisma Studio |
 | `npm run db:seed` | Demo account and conversations |
+| `npm run verify:key` | Checks the AI provider accepts the configured key |
 
 ---
 
@@ -59,32 +71,44 @@ pretending. Nothing is faked.
 
 ```
 app/
-  page.tsx                 landing page
-  login/  signup/          auth forms
-  onboarding/              three-step setup
-  (app)/                   everything behind a session
-    layout.tsx             sidebar shell — requireUser() lives here
-    chat/                  new chat
-    chat/[id]/             one conversation
-    settings/  account/
-  pricing/ privacy/ terms/
-  api/
-    auth/                  signup, login, logout
-    chat/                  streaming completions (SSE)
-    conversations/         list, create, read, rename, pin, delete
-    user/                  profile, password, preferences, onboarding
-components/
-  ui/                      Button, Field, Alert, Logo, ConfirmDialog…
-  landing/  auth/  chat/  sidebar/  settings/
+  page.tsx  pricing/       landing and pricing (plans read from lib/billing/plans.ts)
+  login/  signup/  onboarding/  privacy/  terms/
+  (app)/                   everything behind a session — requireWorkspace() in layout.tsx
+    dashboard/  brand/  campaigns/  content/  video/  ads/
+    calendar/  analytics/  billing/  chat/  settings/  account/
+  api/                     one folder per resource; AI routes rate-limited and credit-checked
+components/                one folder per section, plus ui/ and app/ (shell, PlanLock…)
 lib/
-  ai/                      provider abstraction (types, registry, adapter)
-  auth/                    password hashing, sessions, route guards
-  db/                      Prisma client singleton
-  utils/                   markdown, highlighting, rate limiting, formatting
-prisma/
-  schema.prisma            User, Account, Session, Preferences, Conversation, Message
-proxy.ts                   optimistic redirect for signed-out visitors
+  auth/workspace.ts        the tenancy root: every query scopes on the workspace from here
+  billing/                 plans, credits ledger, payThenSave, payments seam, usage
+  brand/  campaigns/  studio/  video/  ads/  calendar/  analytics/
+                           each: plan.ts (pure — schemas, prompts, parsing, with tests)
+                           and generate.ts or service.ts (server-only)
+  ai/                      provider abstraction (types, registry, adapters, generateText)
+  content/                 site copy and the app navigation
+prisma/schema.prisma       Workspace is the tenant; User owns and joins workspaces
+proxy.ts                   signed-out redirects, and the cross-origin check on /api
 ```
+
+### Tenancy and credits
+
+A **workspace** is the tenant, not a user: plans, credits and every piece of
+work belong to it, so an agency can one day own client workspaces. Every
+route resolves the workspace from the session and scopes each query on it;
+an id from a URL or body is only used after it is checked against it.
+
+Credits are per workspace, in an append-only ledger (`CreditTransaction`,
+each row with the balance after it). **A generation is charged only if it
+succeeded** — and it is charged *before* its result is saved, by
+`payThenSave` in `lib/billing/settle.ts`. The order matters: charging after
+saving would let simultaneous requests all pass the balance check and keep
+their results for the price of one. Chat, which streams, reserves its credit
+up front and refunds it if no reply arrives. Every model call — failures too —
+is logged in `AIUsage`.
+
+Plans live in `lib/billing/plans.ts`, never in the database, so prices and
+allowances change without a migration. Capabilities in `UNBUILT` are shown as
+"Soon" on every pricing surface, and tests keep it that way.
 
 ### Authentication
 
@@ -148,9 +172,26 @@ Both have unit tests: `npm test`.
 ### Rate limiting
 
 In-memory fixed-window limits on sign-up (5/hour per IP), login (10 per 15
-minutes, per IP *and* per address) and chat (30/minute per user). This is sized
-for a single instance; behind several, either set the limits per instance or
-move the store in `lib/utils/rate-limit.ts` to Redis.
+minutes, per IP *and* per normalised address), password changes and account
+deletion (5 per 15 minutes per user), chat (30/minute) and every generation
+route. The client address comes from headers the host sets (Vercel's), not
+from a client-supplied `X-Forwarded-For`. This is sized for a single instance;
+behind several, move the store in `lib/utils/rate-limit.ts` to Redis.
+
+### Hardening
+
+- **CSRF:** the session cookie is `SameSite=Lax`, and `proxy.ts` also refuses
+  any state-changing `/api` request whose `Sec-Fetch-Site`/`Origin` is not this
+  origin — which covers sibling subdomains that Lax trusts.
+- **Headers** (`next.config.ts`): no framing (`frame-ancestors 'none'`,
+  `X-Frame-Options`), `nosniff`, a referrer policy, a permissions policy, and
+  HSTS in production. The CSP does not yet restrict scripts; that needs a
+  per-request nonce.
+- **Destructive actions:** deleting the account takes the password, and says
+  exactly what goes with it — every workspace the user owns.
+- **Errors:** `app/(app)/error.tsx` and `app/global-error.tsx` show a
+  reference, never the error text; provider errors reach users as fixed
+  messages only.
 
 ---
 
@@ -164,15 +205,19 @@ move the store in `lib/utils/rate-limit.ts` to Redis.
    | Variable | Value |
    | --- | --- |
    | `DATABASE_URL` | Pooled Postgres connection string |
-   | `ANTHROPIC_API_KEY` | Your provider key |
+   | `AI_PROVIDER` | `openrouter` (default) or `anthropic` |
+   | `OPENROUTER_API_KEY` / `ANTHROPIC_API_KEY` | The key for that provider |
    | `NEXT_PUBLIC_SITE_URL` | `https://your-domain.com` |
+
+   Never set `NEXA_DEV_PLAN_SWITCH` in production (it is ignored there anyway).
 
 4. Run the migrations against that database once:
    `DATABASE_URL="…" npx prisma migrate deploy`
 
 `npm run build` runs `prisma generate` first, so the client is always built
-against the current schema. `/api/chat` declares `maxDuration = 300` because a
-long reply on the deepest tier can outlast the default function timeout.
+against the current schema. The generation routes declare `maxDuration`
+(up to 300 seconds for a whole campaign), because a long generation can
+outlast the default function timeout.
 
 ---
 
@@ -180,10 +225,14 @@ long reply on the deepest tier can outlast the default function timeout.
 
 Stated plainly so nothing on the site over-promises:
 
-- **No payment processing.** The Pro and Team plans are described, and their
-  buttons create an account — they do not claim to take a card. The pricing
-  page says so.
+- **No payment processing.** Plans are priced but cannot be bought; every
+  account starts on Free, and the site and `/billing` say so.
+- **No publishing, ad launching or video rendering.** Nexa writes; the user
+  posts, launches and films. Each is one seam away (see the top of this file).
+- **No live analytics connections.** Results are imported as CSV; sample data
+  lives in a separate, labelled demo view and is never mixed with real numbers.
+- **Not built, and marked "Soon" on pricing:** competitor research, team
+  invites, client workspaces, bulk generation, white-label reports.
 - **No Google OAuth yet**, though the schema is ready for it.
-- **No email sending**, so there is no password-reset flow. A user who forgets
-  their password cannot currently recover the account.
-- **No admin surface.** Plan changes are database updates today.
+- **No email sending**, so there is no password-reset flow.
+- **No admin surface.** Outside development, plan changes are database updates.

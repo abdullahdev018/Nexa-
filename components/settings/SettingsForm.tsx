@@ -10,13 +10,14 @@ import { NEXA_MODELS, canUseModel } from '@/lib/ai/models'
 import { useApiForm } from '@/lib/hooks/useApiForm'
 import type { UserPreferences } from '@/lib/types'
 import { SettingsSection } from './PageHeader'
+import type { PlanId } from '@/lib/billing/plans'
 
 export function SettingsForm({
   preferences,
   plan,
 }: {
   preferences: UserPreferences
-  plan: 'FREE' | 'PRO' | 'TEAM'
+  plan: PlanId
 }) {
   const router = useRouter()
   const form = useApiForm()

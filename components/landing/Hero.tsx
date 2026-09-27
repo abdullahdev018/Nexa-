@@ -1,6 +1,8 @@
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { LinkButton } from '@/components/ui/Button'
-import { ChatPreview } from './ChatPreview'
+import { PLANS } from '@/lib/billing/plans'
+import { PROMISE } from '@/lib/content/landing'
+import { CampaignPreview } from './CampaignPreview'
 
 export function Hero() {
   return (
@@ -16,42 +18,35 @@ export function Hero() {
         <div className="mx-auto max-w-3xl text-center">
           <p className="animate-rise inline-flex items-center gap-2 rounded-full border border-brand-200 bg-raised/80 px-3.5 py-1.5 text-[13px] font-medium text-brand-700 shadow-xs backdrop-blur">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            Free to start · No credit card required
+            Free to start · {PLANS.FREE.monthlyCredits} credits a month · No card
           </p>
 
           <h1
             className="animate-rise mt-7 text-balance text-[40px] font-semibold leading-[1.06] tracking-tight text-ink-900 sm:text-[58px] lg:text-[66px]"
             style={{ animationDelay: '60ms' }}
           >
-            Meet Nexa, your{' '}
-            <span className="text-brand-600">AI assistant.</span>
+            Your AI <span className="text-brand-600">marketing team.</span>
           </h1>
 
           <p
             className="animate-rise mx-auto mt-6 max-w-2xl text-pretty text-[17px] leading-relaxed text-ink-600 sm:text-[19px]"
             style={{ animationDelay: '120ms' }}
           >
-            Think faster, create more, and get things done with a powerful AI assistant built for
-            everyday work.
+            {PROMISE} Strategy, hooks, posts, video plans, ad copy and a content calendar — written in your
+            brand&apos;s voice, from one brief.
           </p>
 
-          <div
-            className="animate-rise mt-9 flex justify-center"
-            style={{ animationDelay: '180ms' }}
-          >
-            {/* One call to action; signing in is offered in the header. It
-                always points at sign-up so the button means what it says —
-                a visitor who is already signed in is sent on to the app by
-                the guard on that page. */}
+          <div className="animate-rise mt-9 flex justify-center" style={{ animationDelay: '180ms' }}>
+            {/* One call to action; signing in is offered in the header. */}
             <LinkButton href="/signup" size="lg" className="w-full sm:w-auto sm:px-7">
-              Get started
+              Build your first campaign
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </LinkButton>
           </div>
         </div>
 
         <div className="animate-rise mt-16 sm:mt-20" style={{ animationDelay: '240ms' }}>
-          <ChatPreview />
+          <CampaignPreview />
         </div>
       </div>
     </section>

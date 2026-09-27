@@ -31,5 +31,5 @@ export async function POST(request: Request) {
     },
   })
 
-  return NextResponse.json({ ok: true, next: '/chat' })
+  return NextResponse.json({ ok: true, next: '/dashboard' })
 }

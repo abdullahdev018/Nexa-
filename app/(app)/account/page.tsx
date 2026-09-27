@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { prisma } from '@/lib/db/prisma'
-import { requireUser } from '@/lib/auth/guards'
+import { requireWorkspace } from '@/lib/auth/workspace'
+import { getPlan } from '@/lib/billing/plans'
 import { LinkButton } from '@/components/ui/Button'
 import { PageHeader, SettingsSection } from '@/components/settings/PageHeader'
 import {
@@ -18,21 +19,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-const PLAN_LABEL: Record<string, string> = {
-  FREE: 'Free',
-  PRO: 'Pro',
-  TEAM: 'Team',
-}
-
 export default async function AccountPage() {
-  const user = await requireUser()
+  const { user, workspace } = await requireWorkspace()
 
   const account = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
       name: true,
       email: true,
-      plan: true,
       role: true,
       useCases: true,
       createdAt: true,
@@ -65,7 +59,7 @@ export default async function AccountPage() {
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-ink-200 bg-ink-50 p-5">
             <div>
               <p className="text-[15px] font-semibold text-ink-900">
-                {PLAN_LABEL[account.plan] ?? account.plan} plan
+                {getPlan(workspace.plan).name} plan
               </p>
               <p className="mt-1 text-[14px] text-ink-600">
                 Member since {formatDate(account.createdAt)} ·{' '}
@@ -74,11 +68,9 @@ export default async function AccountPage() {
                   : `${account._count.conversations} conversations`}
               </p>
             </div>
-            {account.plan === 'FREE' && (
-              <LinkButton href="/pricing" size="sm">
-                Upgrade to Pro
-              </LinkButton>
-            )}
+            <LinkButton href="/billing" size="sm" variant="secondary">
+              Billing & credits
+            </LinkButton>
           </div>
 
           {account.role || account.useCases.length > 0 ? (

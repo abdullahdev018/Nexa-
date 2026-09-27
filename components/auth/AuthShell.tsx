@@ -4,9 +4,9 @@ import { Check } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
 const POINTS = [
-  'Unlimited conversations, saved and searchable',
-  'Attach code, data and images to any question',
-  'Standing instructions so Nexa writes your way',
+  'A whole campaign from one product brief',
+  'Posts, video plans and ad copy in your brand’s voice',
+  'A calendar to plan it — you stay in control of what goes out',
 ]
 
 /**
@@ -60,13 +60,13 @@ export function AuthShell({
 
         <div className="relative max-w-md">
           <p className="text-[32px] font-semibold leading-tight tracking-tight text-white">
-            Think faster.
+            Your AI
             <br />
-            Create more.
+            marketing team.
           </p>
           <p className="mt-5 text-[16px] leading-relaxed text-night-300">
-            Nexa is an AI assistant built for everyday work — writing, code, analysis and the
-            hundred small questions in between.
+            Give Nexa your product. Nexa builds your marketing campaign — strategy, content, video
+            plans and ads, ready for you to publish.
           </p>
 
           <ul className="mt-10 space-y-4">

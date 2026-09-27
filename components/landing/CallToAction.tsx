@@ -12,15 +12,15 @@ export function CallToAction({ signedIn }: { signedIn: boolean }) {
 
         <div className="relative">
           <h2 className="text-balance text-[30px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
-            Think faster. Create more.
+            Your next campaign is one brief away.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-pretty text-[16.5px] leading-relaxed text-night-300">
-            Create an account and start your first conversation in under a minute. Free to use, with
+            Set up your brand, describe your product, and get the whole campaign. Free to start, with
             no credit card.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <LinkButton href={signedIn ? '/chat' : '/signup'} size="lg" className="w-full sm:w-auto">
+            <LinkButton href={signedIn ? '/dashboard' : '/signup'} size="lg" className="w-full sm:w-auto">
               {signedIn ? 'Open Nexa' : 'Get started free'}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </LinkButton>

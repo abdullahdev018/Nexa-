@@ -4,30 +4,29 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
-import { Sidebar } from '@/components/sidebar/Sidebar'
-import type { ConversationSummary, CurrentUser } from '@/lib/types'
+import { WorkspaceNav } from './WorkspaceNav'
+import type { CreditSummary, CurrentUser, WorkspaceSummary } from '@/lib/types'
 import { cn } from '@/lib/utils/cn'
 
 /**
  * The signed-in frame: a permanent sidebar from `lg` up, a slide-over drawer
- * below it. The sidebar lives here rather than in each page so navigating
- * between chats never re-mounts it.
+ * below it. The nav lives here rather than in each page so moving between
+ * sections never re-mounts it.
  */
 export function AppShell({
   user,
-  conversations,
+  workspace,
+  credits,
   children,
 }: {
   user: CurrentUser
-  conversations: ConversationSummary[]
+  workspace: WorkspaceSummary
+  credits: CreditSummary
   children: ReactNode
 }) {
   const pathname = usePathname()
   const [drawerOpen, setDrawerOpen] = useState(false)
-
   const [lastPath, setLastPath] = useState(pathname)
-
-  const activeId = pathname.startsWith('/chat/') ? pathname.slice('/chat/'.length) : null
 
   // Any navigation closes the drawer — otherwise it stays open over the page
   // the user just asked for. Adjusted during render rather than in an effect,
@@ -46,8 +45,8 @@ export function AppShell({
 
   return (
     <div className="flex h-full">
-      <aside className="hidden w-[17.5rem] shrink-0 border-r border-ink-200 lg:block">
-        <Sidebar user={user} conversations={conversations} activeId={activeId} />
+      <aside className="hidden w-[17rem] shrink-0 border-r border-ink-200 lg:block">
+        <WorkspaceNav user={user} workspace={workspace} credits={credits} />
       </aside>
 
       {/* Mobile drawer */}
@@ -67,14 +66,14 @@ export function AppShell({
         />
         <div
           className={cn(
-            'absolute inset-y-0 left-0 w-[17.5rem] max-w-[85vw] shadow-xl transition-transform duration-200',
+            'absolute inset-y-0 left-0 w-[17rem] max-w-[85vw] shadow-xl transition-transform duration-200',
             drawerOpen ? 'translate-x-0' : '-translate-x-full',
           )}
         >
-          <Sidebar
+          <WorkspaceNav
             user={user}
-            conversations={conversations}
-            activeId={activeId}
+            workspace={workspace}
+            credits={credits}
             onNavigate={() => setDrawerOpen(false)}
           />
         </div>
@@ -85,12 +84,12 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            aria-label="Open sidebar"
+            aria-label="Open menu"
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-600 hover:bg-ink-100"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Logo size={26} withWordmark href="/chat" />
+          <Logo size={26} withWordmark href="/dashboard" />
         </header>
 
         <main className="min-h-0 flex-1">{children}</main>

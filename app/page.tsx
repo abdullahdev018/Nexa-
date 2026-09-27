@@ -1,21 +1,28 @@
+import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/session'
 import { Navbar } from '@/components/landing/Navbar'
 import { Hero } from '@/components/landing/Hero'
 import { Features } from '@/components/landing/Features'
 import { HowItWorks } from '@/components/landing/HowItWorks'
-import { Models } from '@/components/landing/Models'
+import { Honesty } from '@/components/landing/Honesty'
 import { Pricing } from '@/components/landing/Pricing'
 import { Faq } from '@/components/landing/Faq'
 import { CallToAction } from '@/components/landing/CallToAction'
 import { Footer } from '@/components/landing/Footer'
 
 /**
- * The landing page reads the session so every call to action points somewhere
- * true: a signed-in visitor is offered the app, not another sign-up form.
+ * The landing page is the pitch, and the pitch is for people who have not
+ * bought yet. Someone with an account arriving at the root is sent straight
+ * into the app rather than being shown log in and sign up again — the same
+ * rule /login and /signup already follow — to their dashboard.
+ *
+ * Everything below the redirect therefore renders for a signed-out visitor,
+ * which is why `signedIn` is passed as false. The marketing sections still
+ * take the prop because /pricing and the legal pages render them for signed-in
+ * readers, where the call to action does need to point at the app.
  */
 export default async function HomePage() {
-  const user = await getCurrentUser()
-  const signedIn = Boolean(user)
+  if (await getCurrentUser()) redirect('/dashboard')
 
   return (
     <>
@@ -26,16 +33,16 @@ export default async function HomePage() {
         Skip to content
       </a>
 
-      <Navbar signedIn={signedIn} />
+      <Navbar signedIn={false} />
 
       <main id="main">
         <Hero />
         <Features />
-        <HowItWorks signedIn={signedIn} />
-        <Models />
-        <Pricing signedIn={signedIn} />
+        <HowItWorks signedIn={false} />
+        <Honesty />
+        <Pricing signedIn={false} />
         <Faq />
-        <CallToAction signedIn={signedIn} />
+        <CallToAction signedIn={false} />
       </main>
 
       <Footer />

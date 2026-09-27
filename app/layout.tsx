@@ -15,25 +15,24 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Nexa AI — Think faster. Create more.',
+    default: 'Nexa AI — Your AI Marketing Team',
     template: '%s · Nexa AI',
   },
   description:
-    'Nexa is an AI assistant built for everyday work: smart conversations, fast answers, file analysis, coding help and writing assistance, with every chat saved and searchable.',
+    'Give Nexa your product and it builds your marketing campaign: strategy, hooks, posts, video plans, ad copy and a content calendar, written in your brand’s voice.',
   applicationName: 'Nexa AI',
-  keywords: ['AI assistant', 'AI chatbot', 'writing assistant', 'coding help', 'Nexa AI'],
+  keywords: ['AI marketing', 'marketing campaign generator', 'social media content', 'ad copy', 'content calendar', 'Nexa AI'],
   openGraph: {
     type: 'website',
     siteName: 'Nexa AI',
-    title: 'Nexa AI — Think faster. Create more.',
-    description:
-      'An AI assistant built for everyday work. Smart conversations, fast answers, and a history you can actually search.',
+    title: 'Nexa AI — Your AI Marketing Team',
+    description: 'Give Nexa your product. Nexa builds your marketing campaign.',
     url: SITE_URL,
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Nexa AI — Think faster. Create more.',
-    description: 'An AI assistant built for everyday work.',
+    title: 'Nexa AI — Your AI Marketing Team',
+    description: 'Give Nexa your product. Nexa builds your marketing campaign.',
   },
   icons: {
     // The tab icon is the tight variant: at 16px the full mark's padding and

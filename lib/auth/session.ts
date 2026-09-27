@@ -26,7 +26,8 @@ export interface SessionUser {
   email: string
   name: string | null
   image: string | null
-  plan: 'FREE' | 'PRO' | 'TEAM'
+  /** Which workspace to open. Resolved into a real one by lib/auth/workspace. */
+  lastWorkspaceId: string | null
   onboardedAt: Date | null
 }
 
@@ -81,7 +82,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
           email: true,
           name: true,
           image: true,
-          plan: true,
+          lastWorkspaceId: true,
           onboardedAt: true,
         },
       },

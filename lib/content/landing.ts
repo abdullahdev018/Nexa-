@@ -1,9 +1,18 @@
 /**
  * All marketing copy in one file, so wording changes never mean touching JSX.
  *
- * Every claim here describes something the product actually does. There are no
- * invented customers, logos, testimonials or metrics anywhere on the site.
+ * Every claim here describes something the product actually does today. There
+ * are no invented customers, logos, testimonials or metrics anywhere on the
+ * site, and nothing that implies Nexa posts, launches, renders or spends on
+ * the user's behalf — it does none of those. Prices and plan contents are not
+ * written here at all: they are read from `lib/billing/plans.ts`, the same
+ * config the product enforces, so the site cannot drift from what is sold.
  */
+
+import type { PlanLimits } from '@/lib/billing/plans'
+
+export const TAGLINE = 'Your AI Marketing Team'
+export const PROMISE = 'Give Nexa your product. Nexa builds your marketing campaign.'
 
 export const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -16,44 +25,61 @@ export interface Feature {
   icon: string
   title: string
   description: string
+  /** The plan capability it needs; the component names the cheapest plan with it. */
+  requires?: keyof PlanLimits
 }
 
 export const FEATURES: Feature[] = [
   {
-    icon: 'MessagesSquare',
-    title: 'Smart conversations',
+    icon: 'Megaphone',
+    title: 'Campaign Generator',
     description:
-      'Nexa keeps the whole thread in view, so follow-up questions land in context instead of starting from nothing. Ask it to change tack mid-conversation and it follows.',
+      'Pick a product, a goal, an audience, your platforms and a style. Nexa writes the strategy, positioning, hooks, content ideas, video concepts, ad copy, captions, calls to action and a 14-day calendar.',
   },
   {
-    icon: 'Zap',
-    title: 'Fast responses',
+    icon: 'Palette',
+    title: 'Brand Kit',
     description:
-      'Answers stream in as they are written, so you read the first line while the rest is still arriving. Pick a faster model when you want speed over depth.',
+      'Save your voice, audience, colours, fonts, guidelines and products once. Every campaign, post and ad is written from it, so everything sounds like you.',
   },
   {
-    icon: 'FileSearch',
-    title: 'File analysis',
+    icon: 'FileText',
+    title: 'Content Studio',
     description:
-      'Attach code, CSVs, JSON, markdown or an image and ask about it directly. Nexa reads the file as part of the question rather than making you paste it in.',
+      'Posts, reels, shorts, stories, carousels and captions — written for the platform they are going on, up to three variations at a time.',
   },
   {
-    icon: 'History',
-    title: 'Conversation history',
+    icon: 'Clapperboard',
+    title: 'AI video plans',
+    requires: 'videoGeneration',
     description:
-      'Every chat is saved to your account, grouped by day, and searchable by title or by anything said inside it. Pin the ones you keep coming back to.',
+      'A shootable plan for a phone: the hook, timed scenes, shots, on-screen text, voiceover and a shot list. Nexa writes the plan; it does not render video.',
   },
   {
-    icon: 'Code2',
-    title: 'Coding help',
+    icon: 'Target',
+    title: 'Ad Studio',
     description:
-      'Syntax-highlighted code blocks with one-click copy, whole-file rewrites, and explanations that match the language you are actually working in.',
+      'Primary text, headlines and descriptions for Meta, Google and TikTok, checked against each platform’s character limits, with a CSV to take into your ad manager.',
   },
   {
-    icon: 'PenLine',
-    title: 'Writing assistance',
+    icon: 'CalendarDays',
+    title: 'Marketing calendar',
+    requires: 'contentCalendar',
     description:
-      'Drafts, edits, rewrites and tone changes. Set standing instructions once and Nexa writes the way you want without being told each time.',
+      'Put a campaign on real dates, plan weeks of posts with AI, or add pieces one by one. It is your plan — Nexa does not post for you.',
+  },
+  {
+    icon: 'BarChart3',
+    title: 'Analytics & Insights',
+    requires: 'analytics',
+    description:
+      'Import results from your ad manager to see reach, clicks, leads and spend in one place, then ask Nexa what the numbers mean and what to do next.',
+  },
+  {
+    icon: 'Sparkles',
+    title: 'AI Assistant',
+    description:
+      'Ask anything about your marketing. The assistant knows your brand and products, so answers start from your business, not from scratch.',
   },
 ]
 
@@ -64,84 +90,42 @@ export interface Step {
 
 export const STEPS: Step[] = [
   {
-    title: 'Create your account',
+    title: 'Set up your brand',
     description:
-      'Email and a password is all it takes. No credit card, and no sales call before you can try it.',
+      'Tell Nexa who you are, who you sell to and how you sound. It takes a few minutes and every piece of work reads from it.',
   },
   {
-    title: 'Tell Nexa what you do',
+    title: 'Give Nexa your product',
     description:
-      'A two-minute setup captures your role and what you want help with, and Nexa uses it to pitch every answer correctly from the first message.',
+      'Pick a product, what the campaign should achieve, who it is for and where you sell. That is the whole brief.',
   },
   {
-    title: 'Start working',
+    title: 'Get the campaign — then build on it',
     description:
-      'Ask a question, attach a file, or paste in what you are stuck on. Every conversation is saved, searchable and yours to delete.',
+      'Strategy, hooks, content, video plans, ad copy and a calendar in one place. Turn any idea into finished posts, videos or ads with one click.',
   },
 ]
 
-export interface PricingTier {
-  id: string
-  name: string
-  price: string
-  cadence: string
-  description: string
-  features: string[]
-  cta: string
-  href: string
-  featured?: boolean
-}
-
-export const PRICING: PricingTier[] = [
+/**
+ * What Nexa does not do, said plainly. These are the lines a marketing tool is
+ * most tempted to blur, so the site says them out loud.
+ */
+export const HONESTY: { title: string; description: string }[] = [
   {
-    id: 'free',
-    name: 'Free',
-    price: '$0',
-    cadence: 'forever',
-    description: 'Everything you need to use Nexa for everyday work.',
-    features: [
-      'Nexa Swift and Nexa Balanced models',
-      'Unlimited saved conversations',
-      'Full-text search across your history',
-      'File and image attachments',
-      'Custom instructions',
-    ],
-    cta: 'Get started',
-    href: '/signup',
+    title: 'It does not post for you',
+    description: 'Nexa is not connected to your social accounts. You publish what it writes, when you choose.',
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    price: '$20',
-    cadence: 'per month',
-    description: 'For longer, harder work that needs the most capable model.',
-    features: [
-      'Everything in Free',
-      'Nexa Deep — the most capable model',
-      'Higher message limits',
-      'Longer context for large files',
-      'Priority access when demand is high',
-    ],
-    // Self-service checkout does not exist yet, so this cannot claim to take
-    // a payment. It creates the account we would upgrade.
-    cta: 'Create your account',
-    href: '/signup',
-    featured: true,
+    title: 'It does not spend your money',
+    description: 'Ads are written, never launched. No ad account is connected, and nothing is bought on your behalf.',
   },
   {
-    id: 'team',
-    name: 'Team',
-    price: 'Custom',
-    cadence: 'talk to us',
-    description: 'Shared billing and central administration for a whole team.',
-    features: [
-      'Everything in Pro',
-      'Centralised billing',
-      'Shared workspace administration',
-      'Onboarding support',
-    ],
-    cta: 'Create your account',
-    href: '/signup',
+    title: 'It does not fake results',
+    description: 'Analytics shows numbers you import. Sample data lives in a separate, clearly labelled demo view.',
+  },
+  {
+    title: 'It charges only for what worked',
+    description: 'Credits are taken when a generation succeeds. A failed one is logged and costs nothing.',
   },
 ]
 
@@ -152,34 +136,34 @@ export interface FaqItem {
 
 export const FAQ: FaqItem[] = [
   {
-    question: 'What can I actually use Nexa for?',
+    question: 'Who is Nexa for?',
     answer:
-      'Everyday knowledge work: drafting and editing writing, explaining or debugging code, working through a problem out loud, summarising a document you attach, and answering questions. It is a general assistant rather than a single-purpose tool.',
+      'Solo marketers, small businesses, online shops, creators and small agencies — anyone who has a product to sell and not enough hours to plan, write and schedule everything around it.',
   },
   {
-    question: 'Is my conversation history private?',
+    question: 'Does Nexa post to Instagram or TikTok for me?',
     answer:
-      'Your conversations are stored against your account so they are there when you come back, and they are visible only to you. You can delete any conversation, or your entire account with everything in it, from Settings at any time.',
+      'No. Nexa is not connected to any social or ad account. It writes the posts, video plans and ads, puts them on your calendar, and you publish them. It will never say something was posted when it was not.',
   },
   {
-    question: 'Do you train models on my chats?',
+    question: 'Does it make videos?',
     answer:
-      'No. Your messages are sent to the model provider to generate a reply and stored in your own history. They are not used to train models.',
+      'It writes the video plan — hook, scenes, shots, on-screen text and voiceover — for you or a creator to film. It does not render video files; no video provider is connected, and the app says so on every plan.',
   },
   {
-    question: 'What files can I attach?',
+    question: 'How do credits work?',
     answer:
-      'Text-based files — code, CSV, JSON, markdown, plain text — are read directly, and JPEG, PNG, GIF and WebP images can be analysed visually. Attachments are capped at 5 MB each, five per message.',
+      'Each plan comes with credits every month, and each kind of generation costs a set number — a whole campaign costs more than a caption. Credits are charged only when a generation succeeds, and you can see every one in your credit history. Unused credits do not roll over.',
   },
   {
-    question: 'What is the difference between the models?',
+    question: 'Can I buy a paid plan today?',
     answer:
-      'Nexa Swift is the fastest and best for quick questions. Nexa Balanced is the default and handles most work well. Nexa Deep thinks longer and is aimed at analysis, long documents and hard code; it is included with Pro.',
+      'Not yet. Online checkout is not open, so every account starts on Free. The prices below are what the plans will cost when it opens.',
   },
   {
-    question: 'Can I cancel Pro?',
+    question: 'Is my data private? Do you train on it?',
     answer:
-      'Yes, at any time, and you keep Pro until the end of the period you have paid for. Your conversations stay exactly where they are on the Free plan.',
+      'Your brand, campaigns and content are stored in your workspace and visible only to its members. What you send is passed to the AI provider to generate a reply and is not used to train models. You can delete your account and everything in it at any time.',
   },
 ]
 
@@ -208,14 +192,27 @@ export const FOOTER_LINKS = [
   },
 ] as const
 
-/** The scripted exchange in the hero preview. */
-export const PREVIEW_TURNS = [
-  {
-    role: 'user' as const,
-    text: 'Summarise this quarterly report and pull out the three numbers that matter.',
+/**
+ * The example shown in the hero. It is labelled on the page as an example of
+ * the kind of output Nexa writes — not a customer, and not a result.
+ */
+export const EXAMPLE_CAMPAIGN = {
+  brief: {
+    product: 'Fig & Cedar soy candle',
+    goal: 'Product launch',
+    platforms: 'Instagram · TikTok',
+    style: 'Warm, premium',
   },
-  {
-    role: 'assistant' as const,
-    text: "Revenue grew 18% to $4.2M, but it's the other two figures that explain the quarter:\n\n**Net retention: 112%** — existing customers are expanding faster than new ones arrive.\n**Gross margin: 74%**, up 6 points, almost entirely from the infrastructure migration.\n\nThe risk is concentration: the top three accounts are now 31% of revenue.",
-  },
-]
+  angle: 'Scent as a ritual — the ten quiet minutes at the end of the day.',
+  hooks: [
+    'Your living room, but on holiday.',
+    'We pour every one by hand. Here is why that matters.',
+    'The candle that made our studio smell like a Greek summer.',
+  ],
+  pieces: [
+    { label: 'Content ideas', count: 8 },
+    { label: 'Video concepts', count: 3 },
+    { label: 'Ad variations', count: 3 },
+    { label: 'Calendar slots', count: 14 },
+  ],
+}

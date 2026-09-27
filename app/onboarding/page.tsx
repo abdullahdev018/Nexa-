@@ -13,7 +13,7 @@ export default async function OnboardingPage() {
   if (!user) redirect('/login?next=/onboarding')
   // Onboarding is a one-time step; re-entering it after finishing would only
   // overwrite settings the user has since changed.
-  if (user.onboardedAt) redirect('/chat')
+  if (user.onboardedAt) redirect('/dashboard')
 
   return <OnboardingFlow name={user.name} />
 }

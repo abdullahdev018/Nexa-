@@ -10,7 +10,7 @@ export function Footer() {
           <div className="lg:col-span-1">
             <Logo size={30} withWordmark />
             <p className="mt-4 max-w-xs text-[14.5px] leading-relaxed text-ink-600">
-              An AI assistant built for everyday work. Think faster, create more.
+              Your AI marketing team. Give Nexa your product; it builds your marketing campaign.
             </p>
           </div>
 

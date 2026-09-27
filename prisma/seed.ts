@@ -58,12 +58,63 @@ async function main() {
     select: { id: true },
   })
 
+  // Every account owns a workspace — that is the tenancy root, and nothing
+  // can be created without one.
+  //
+  // The demo workspace is put on PRO so the seeded account can exercise the
+  // paid features locally. Its Subscription row leaves `provider` null, which
+  // is what records the truth: this plan was GRANTED by the seed, not paid
+  // for. Nothing in the app may read it as a completed purchase.
+  let workspace = await prisma.workspace.findFirst({
+    where: { ownerId: user.id },
+    select: { id: true },
+  })
+
+  if (!workspace) {
+    const now = new Date()
+    workspace = await prisma.workspace.create({
+      data: {
+        name: 'Demo Workspace',
+        slug: `demo-${user.id.slice(-8).toLowerCase()}`,
+        ownerId: user.id,
+        plan: 'PRO',
+        memberships: { create: { userId: user.id, role: 'OWNER' } },
+        subscription: { create: { plan: 'PRO', status: 'ACTIVE', interval: 'MONTHLY' } },
+        creditBalance: {
+          create: {
+            balance: 2000,
+            monthlyAllowance: 2000,
+            periodStart: now,
+            periodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+      },
+      select: { id: true },
+    })
+
+    await prisma.creditTransaction.create({
+      data: {
+        workspaceId: workspace.id,
+        amount: 2000,
+        kind: 'GRANT',
+        reason: 'Opening balance',
+        balanceAfter: 2000,
+      },
+    })
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastWorkspaceId: workspace.id },
+    })
+  }
+
   // Replaced rather than appended, so repeated runs do not pile up.
   await prisma.conversation.deleteMany({ where: { userId: user.id } })
 
   await prisma.conversation.create({
     data: {
       userId: user.id,
+      workspaceId: workspace.id,
       title: 'Refactor the session check',
       model: 'nexa-balanced',
       pinned: true,
@@ -107,6 +158,7 @@ async function main() {
   await prisma.conversation.create({
     data: {
       userId: user.id,
+      workspaceId: workspace.id,
       title: 'Launch announcement draft',
       model: 'nexa-swift',
       messages: {

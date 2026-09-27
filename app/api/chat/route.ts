@@ -1,12 +1,15 @@
 import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
-import { getCurrentUser } from '@/lib/auth/session'
+import { getWorkspaceContext } from '@/lib/auth/workspace'
 import { getProvider } from '@/lib/ai'
 import { canUseModel, getModel } from '@/lib/ai/models'
 import { buildSystemPrompt, deriveTitle, trimHistory } from '@/lib/ai/prompt'
 import { IMAGE_TYPES, type Attachment, type ChatMessage } from '@/lib/ai/types'
 import { apiError, readJson, validationError } from '@/lib/utils/api'
 import { rateLimit } from '@/lib/utils/rate-limit'
+import { chargeCredits, recordAIUsage, refundCredits } from '@/lib/billing/credits'
+import { CREDIT_FEATURE_LABEL } from '@/lib/billing/plans'
+import { loadBrandContext } from '@/lib/brand/queries'
 
 // Generation can take minutes on the deepest tier; the default function
 // timeout would cut the stream off partway.
@@ -20,7 +23,9 @@ const MAX_TEXT_CHARS = 200_000
 const attachmentSchema = z.object({
   name: z.string().min(1).max(200),
   kind: z.enum(['image', 'text']),
-  data: z.string().min(1),
+  // About 5 MB of base64, or 200k characters of text: bounded before it is
+  // held in memory, not only when it is sanitised afterwards.
+  data: z.string().min(1).max(7_000_000),
   mediaType: z.string().max(120),
   size: z.number().int().nonnegative(),
 })
@@ -58,8 +63,9 @@ function frame(event: string, data: unknown): string {
 }
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser()
-  if (!user) return apiError('Not signed in.', 401)
+  const context = await getWorkspaceContext()
+  if (!context) return apiError('Not signed in.', 401)
+  const { user, workspace } = context
 
   const limit = rateLimit(`chat:${user.id}`, 30, 60_000)
   if (!limit.ok) {
@@ -85,14 +91,34 @@ export async function POST(request: Request) {
   }
 
   const model = getModel(parsed.data.model)
-  if (!canUseModel(model, user.plan)) {
+  if (!canUseModel(model, workspace.plan)) {
     return apiError(`${model.name} is available on the Pro plan.`, 403)
+  }
+
+  // The credit is reserved up front, not merely checked: a reply streams to
+  // the browser as it is written, so it cannot be held back until paid for,
+  // and a read-only check would let simultaneous requests all through for the
+  // price of one. If no reply arrives, the credit is refunded further down —
+  // a failed reply still costs nothing.
+  const reserved = await chargeCredits({
+    workspaceId: workspace.id,
+    plan: workspace.plan,
+    feature: 'CHAT',
+    userId: user.id,
+    metadata: { model: model.id },
+  })
+  if (!reserved.ok) {
+    return apiError(
+      `Not enough credits. This costs ${reserved.required} and the workspace has ` +
+        `${reserved.balance} left. Credits renew at the start of the next period.`,
+      402,
+    )
   }
 
   // Load or create the thread, always scoped to the signed-in user.
   let conversation = parsed.data.conversationId
     ? await prisma.conversation.findFirst({
-        where: { id: parsed.data.conversationId, userId: user.id },
+        where: { id: parsed.data.conversationId, userId: user.id, workspaceId: workspace.id },
         select: { id: true, title: true },
       })
     : null
@@ -102,6 +128,7 @@ export async function POST(request: Request) {
     conversation = await prisma.conversation.create({
       data: {
         userId: user.id,
+        workspaceId: workspace.id,
         title: deriveTitle(message || attachments[0]?.name || 'New chat'),
         model: model.id,
       },
@@ -111,7 +138,7 @@ export async function POST(request: Request) {
 
   const conversationId = conversation.id
 
-  const [previous, profile] = await Promise.all([
+  const [previous, profile, brand] = await Promise.all([
     prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
@@ -126,6 +153,7 @@ export async function POST(request: Request) {
         preferences: { select: { customInstructions: true } },
       },
     }),
+    loadBrandContext(workspace.id, workspace.plan),
   ])
 
   await prisma.message.create({
@@ -158,6 +186,7 @@ export async function POST(request: Request) {
     role: profile?.role,
     useCases: profile?.useCases,
     customInstructions: profile?.preferences?.customInstructions,
+    brand,
   })
 
   // Aborts the upstream call when the browser disconnects (Stop, or navigating
@@ -207,6 +236,41 @@ export async function POST(request: Request) {
         queue.enqueue(encoder.encode(frame('error', { message: failure })))
       }
 
+      // Credits are kept only for a reply that actually arrived. A failed or
+      // empty generation is recorded as usage and its reserved credit goes
+      // back — charging for work that did not happen is not something this
+      // product does.
+      const produced = answer.trim().length > 0
+      let charged = reserved.charged
+      let creditsLeft: number | undefined = reserved.balance
+
+      if (!produced || failure) {
+        creditsLeft = await refundCredits({
+          workspaceId: workspace.id,
+          amount: reserved.charged,
+          reason: CREDIT_FEATURE_LABEL.CHAT,
+          userId: user.id,
+        }).catch((error) => {
+          console.error('[chat] refund failed', error)
+          return undefined
+        })
+        charged = 0
+      }
+
+      await recordAIUsage({
+        workspaceId: workspace.id,
+        userId: user.id,
+        feature: 'CHAT',
+        provider: provider.name,
+        model: usedModel ?? model.id,
+        inputTokens: usage?.inputTokens,
+        outputTokens: usage?.outputTokens,
+        creditsCharged: charged,
+        success: produced && !failure,
+        // The class of failure only — never an upstream body.
+        errorKind: failure ? 'generation_failed' : null,
+      })
+
       // Persist whatever was produced — including a partial answer — so the
       // thread reads the same after a reload as it did live.
       if (answer.trim() || failure) {
@@ -229,7 +293,9 @@ export async function POST(request: Request) {
         .update({ where: { id: conversationId }, data: { updatedAt: new Date() } })
         .catch(() => {})
 
-      queue.enqueue(encoder.encode(frame('done', { conversationId, usage })))
+      queue.enqueue(
+        encoder.encode(frame('done', { conversationId, usage, credits: creditsLeft })),
+      )
       queue.close()
     },
   })

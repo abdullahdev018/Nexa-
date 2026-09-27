@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db/prisma'
-import { requireUser } from '@/lib/auth/guards'
+import { requireWorkspace } from '@/lib/auth/workspace'
 import { getModel } from '@/lib/ai/models'
 import { ChatView } from '@/components/chat/ChatView'
 import type { AttachmentMeta, UiMessage } from '@/lib/types'
@@ -12,14 +12,15 @@ export const metadata: Metadata = {
 }
 
 export default async function ConversationPage(props: PageProps<'/chat/[id]'>) {
-  const user = await requireUser()
+  const { user, workspace } = await requireWorkspace()
   const { id } = await props.params
 
   const [conversation, preferences] = await Promise.all([
     prisma.conversation.findFirst({
-      // Scoped by user as well as id: an id belonging to someone else is a
-      // 404, not a permission error, so nothing is revealed by guessing.
-      where: { id, userId: user.id },
+      // Scoped by workspace and user as well as id: an id belonging to anyone
+      // else is a 404, not a permission error, so nothing is revealed by
+      // guessing one.
+      where: { id, userId: user.id, workspaceId: workspace.id },
       select: {
         id: true,
         model: true,
@@ -64,7 +65,7 @@ export default async function ConversationPage(props: PageProps<'/chat/[id]'>) {
       conversationId={conversation.id}
       initialMessages={messages}
       initialModel={getModel(conversation.model).id}
-      user={{ id: user.id, email: user.email, name: user.name, plan: user.plan }}
+      user={{ id: user.id, email: user.email, name: user.name, plan: workspace.plan }}
       enterToSend={preferences?.enterToSend ?? true}
     />
   )

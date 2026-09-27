@@ -102,7 +102,9 @@ function describe(error: unknown): ProviderError {
     return new ProviderError('Nexa is busy right now. Try again in a moment.', 429)
   }
   if (error instanceof Anthropic.BadRequestError) {
-    return new ProviderError(`That request could not be processed: ${error.message}`, 400)
+    // The upstream message can echo request details; it is logged by the
+    // caller as a class only and never returned.
+    return new ProviderError('That request could not be processed.', 400)
   }
   if (error instanceof Anthropic.APIConnectionError) {
     return new ProviderError('Could not reach the AI provider.', 504)

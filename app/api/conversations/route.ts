@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db/prisma'
-import { getCurrentUser } from '@/lib/auth/session'
+import { getWorkspaceContext } from '@/lib/auth/workspace'
 import { getModel } from '@/lib/ai/models'
 import { apiError, readJson, validationError } from '@/lib/utils/api'
 
 /** Lists the signed-in user's threads for the sidebar and history page. */
 export async function GET(request: Request) {
-  const user = await getCurrentUser()
-  if (!user) return apiError('Not signed in.', 401)
+  const context = await getWorkspaceContext()
+  if (!context) return apiError('Not signed in.', 401)
+  const { user, workspace } = context
 
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')?.trim() ?? ''
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
   const conversations = await prisma.conversation.findMany({
     where: {
       userId: user.id,
+      workspaceId: workspace.id,
       ...(includeArchived ? {} : { archivedAt: null }),
       ...(query
         ? {
@@ -53,8 +55,9 @@ const createSchema = z.object({
 })
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser()
-  if (!user) return apiError('Not signed in.', 401)
+  const context = await getWorkspaceContext()
+  if (!context) return apiError('Not signed in.', 401)
+  const { user, workspace } = context
 
   const parsed = createSchema.safeParse((await readJson(request)) ?? {})
   if (!parsed.success) return validationError(parsed.error)
@@ -62,6 +65,7 @@ export async function POST(request: Request) {
   const conversation = await prisma.conversation.create({
     data: {
       userId: user.id,
+      workspaceId: workspace.id,
       title: parsed.data.title?.trim() || 'New chat',
       model: getModel(parsed.data.model).id,
     },

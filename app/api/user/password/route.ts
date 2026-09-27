@@ -4,10 +4,15 @@ import { hashPassword, verifyPassword } from '@/lib/auth/password'
 import { createSession, destroyAllSessions, getCurrentUser } from '@/lib/auth/session'
 import { changePasswordSchema } from '@/lib/auth/validation'
 import { apiError, readJson, validationError } from '@/lib/utils/api'
+import { rateLimit } from '@/lib/utils/rate-limit'
 
 export async function POST(request: Request) {
   const user = await getCurrentUser()
   if (!user) return apiError('Not signed in.', 401)
+
+  // A session alone must not be enough to guess the current password.
+  const limit = rateLimit(`password:${user.id}`, 5, 15 * 60 * 1000)
+  if (!limit.ok) return apiError(`Too many attempts. Try again in ${limit.retryAfter}s.`, 429)
 
   const parsed = changePasswordSchema.safeParse(await readJson(request))
   if (!parsed.success) return validationError(parsed.error)

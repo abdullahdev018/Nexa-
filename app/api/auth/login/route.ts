@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma'
 import { DEFAULT_THEME, isTheme, THEME_COOKIE } from '@/lib/theme'
 import { fakeVerify, verifyPassword } from '@/lib/auth/password'
 import { createSession } from '@/lib/auth/session'
-import { loginSchema } from '@/lib/auth/validation'
+import { loginSchema, emailSchema } from '@/lib/auth/validation'
 import { apiError, readJson, validationError } from '@/lib/utils/api'
 import { clientIp, rateLimit } from '@/lib/utils/rate-limit'
 
@@ -15,7 +15,10 @@ export async function POST(request: Request) {
   // Limited per IP and per address: the first stops one host spraying many
   // accounts, the second stops a botnet hammering one account.
   const byIp = rateLimit(`login:ip:${ip}`, 10, 15 * 60 * 1000)
-  const byEmail = rateLimit(`login:email:${String(parsedBody?.email ?? '').toLowerCase()}`, 10, 15 * 60 * 1000)
+  // Keyed on the address as the schema normalises it (trimmed, lower-cased),
+  // so " victim@x.com" and "victim@x.com" share one bucket.
+  const normalised = emailSchema.safeParse(parsedBody?.email)
+  const byEmail = rateLimit(`login:email:${normalised.success ? normalised.data : 'invalid'}`, 10, 15 * 60 * 1000)
   if (!byIp.ok || !byEmail.ok) {
     return apiError('Too many sign-in attempts. Try again in a few minutes.', 429)
   }
@@ -77,6 +80,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     user,
-    next: '/chat',
+    next: '/dashboard',
   })
 }

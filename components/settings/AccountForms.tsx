@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { Modal } from '@/components/ui/Modal'
 import { Field, Input } from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Spinner'
 import { useApiForm } from '@/lib/hooks/useApiForm'
@@ -133,21 +133,13 @@ export function PasswordForm() {
 
 export function DangerZone({ conversationCount }: { conversationCount: number }) {
   const router = useRouter()
+  const form = useApiForm()
   const [open, setOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
 
   async function deleteAccount() {
-    setBusy(true)
-    setError(null)
-
-    const response = await fetch('/api/user', { method: 'DELETE' })
-    if (!response.ok) {
-      setBusy(false)
-      setError('Your account could not be deleted. Please try again.')
-      return
-    }
-
+    const result = await form.submit('/api/user', { password }, 'DELETE')
+    if (!result) return
     // The session row went with the account; go somewhere public.
     router.push('/')
     router.refresh()
@@ -155,29 +147,66 @@ export function DangerZone({ conversationCount }: { conversationCount: number })
 
   return (
     <div>
-      {error && <Alert className="mb-5">{error}</Alert>}
-
       <div className="rounded-xl border border-danger-border bg-danger-surface/60 p-5">
         <h3 className="text-[15px] font-semibold text-ink-900">Delete your account</h3>
         <p className="mt-1.5 max-w-xl text-[14px] leading-relaxed text-ink-600">
-          This permanently removes your account, your settings and all{' '}
-          {conversationCount === 1 ? '1 conversation' : `${conversationCount} conversations`}. It
-          cannot be undone.
+          This permanently removes your account and settings,{' '}
+          {conversationCount === 1 ? '1 conversation' : `${conversationCount} conversations`}, and every workspace you
+          own — with its brands, campaigns, content, video plans, ads, calendar, imported results and credit history.
+          It cannot be undone.
         </p>
-        <Button variant="danger" className="mt-4" onClick={() => setOpen(true)}>
+        <Button
+          variant="danger"
+          className="mt-4"
+          onClick={() => {
+            setPassword('')
+            form.reset()
+            setOpen(true)
+          }}
+        >
           Delete account
         </Button>
       </div>
 
-      <ConfirmDialog
-        open={open}
-        busy={busy}
-        title="Delete your account?"
-        body="Everything — your conversations, settings and sign-in — is removed immediately and permanently. This cannot be undone."
-        confirmLabel={busy ? 'Deleting…' : 'Delete everything'}
-        onConfirm={deleteAccount}
-        onCancel={() => setOpen(false)}
-      />
+      <Modal open={open} title="Delete your account?" onClose={() => setOpen(false)} busy={form.submitting}>
+        <p className="text-[14.5px] leading-relaxed text-ink-600">
+          Everything is removed immediately and permanently: your sign-in, your conversations, and every workspace you
+          own with all of its work. Enter your password to confirm.
+        </p>
+        {form.error && !form.fields.password && <Alert className="mt-4">{form.error}</Alert>}
+        <form
+          className="mt-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void deleteAccount()
+          }}
+        >
+          <Field label="Password" error={form.fields.password}>
+            {({ id, describedBy, invalid }) => (
+              <Input
+                id={id}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value)
+                  form.clearField('password')
+                }}
+                aria-describedby={describedBy}
+                invalid={invalid}
+              />
+            )}
+          </Field>
+          <div className="mt-6 flex justify-end gap-2.5">
+            <Button variant="secondary" onClick={() => setOpen(false)} disabled={form.submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="danger" disabled={form.submitting || !password}>
+              {form.submitting ? <Spinner label="Deleting" /> : 'Delete everything'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

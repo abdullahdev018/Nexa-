@@ -11,7 +11,7 @@ export default async function TermsPage() {
   const user = await getCurrentUser()
 
   return (
-    <LegalLayout title="Terms of Service" updated="12 September 2026" signedIn={Boolean(user)}>
+    <LegalLayout title="Terms of Service" updated="26 September 2026" signedIn={Boolean(user)}>
       <p>
         These terms cover your use of Nexa AI. By creating an account you agree to them.
       </p>
@@ -48,7 +48,7 @@ export default async function TermsPage() {
         <h2>Content</h2>
         <p>
           You keep ownership of what you write. You are responsible for what you send and for how
-          you use what Nexa produces. We claim no ownership of your conversations.
+          you use what Nexa produces. We claim no ownership of your conversations, or of the campaigns, content, video plans and ads Nexa writes for you.
         </p>
       </section>
 

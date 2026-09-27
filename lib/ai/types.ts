@@ -7,6 +7,8 @@
  */
 
 export type ChatRole = 'user' | 'assistant'
+import type { PlanId } from '@/lib/billing/plans'
+
 
 /** Accepted image types. Anything else is rejected before it reaches a provider. */
 export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
@@ -40,8 +42,8 @@ export interface NexaModel {
   description: string
   /** Shown on the model picker as a rough speed/depth hint. */
   badge: string
-  /** Pro-only tiers are visible but locked for free accounts. */
-  requiresPlan: 'FREE' | 'PRO'
+  /** Tiers above the workspace's plan are visible but locked. */
+  requiresPlan: PlanId
 }
 
 export interface CompletionRequest {

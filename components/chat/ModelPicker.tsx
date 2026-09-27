@@ -5,6 +5,7 @@ import { Check, ChevronDown, Gauge, Lock, Sparkles, Zap, type LucideIcon } from 
 import { NEXA_MODELS, canUseModel, getModel } from '@/lib/ai/models'
 import { useDismiss } from '@/lib/hooks/useDismiss'
 import { cn } from '@/lib/utils/cn'
+import type { PlanId } from '@/lib/billing/plans'
 
 const ICONS: Record<string, LucideIcon> = {
   'nexa-swift': Zap,
@@ -20,7 +21,7 @@ export function ModelPicker({
 }: {
   value: string
   onChange: (modelId: string) => void
-  plan: 'FREE' | 'PRO' | 'TEAM'
+  plan: PlanId
   disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)

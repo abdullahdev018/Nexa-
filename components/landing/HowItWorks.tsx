@@ -7,8 +7,8 @@ export function HowItWorks({ signedIn }: { signedIn: boolean }) {
     <Section id="how-it-works" muted>
       <SectionHeading
         eyebrow="How it works"
-        title="Three steps, about two minutes"
-        description="There is no setup to get wrong and nothing to install. Create an account and you are working."
+        title="One brief. Your entire marketing campaign."
+        description="No setup to get wrong and nothing to install. Tell Nexa about your brand once, then brief it like you would a marketing team."
       />
 
       <ol className="mt-14 grid gap-8 sm:grid-cols-3 sm:gap-6">
@@ -35,8 +35,8 @@ export function HowItWorks({ signedIn }: { signedIn: boolean }) {
       </ol>
 
       <div className="mt-12 flex justify-center sm:justify-start">
-        <LinkButton href={signedIn ? '/chat' : '/signup'} size="lg">
-          {signedIn ? 'Open Nexa' : 'Create your account'}
+        <LinkButton href={signedIn ? '/dashboard' : '/signup'} size="lg">
+          {signedIn ? 'Open Nexa' : 'Start free'}
         </LinkButton>
       </div>
     </Section>

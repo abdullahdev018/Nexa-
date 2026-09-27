@@ -2,14 +2,14 @@ import type { Metadata } from 'next'
 import { getCurrentUser } from '@/lib/auth/session'
 import { Navbar } from '@/components/landing/Navbar'
 import { Footer } from '@/components/landing/Footer'
-import { PricingTable } from '@/components/landing/Pricing'
+import { CreditCosts, PlanMatrix, PricingTable } from '@/components/landing/Pricing'
 import { Faq } from '@/components/landing/Faq'
 import { CallToAction } from '@/components/landing/CallToAction'
 
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Nexa AI pricing. Start free with unlimited conversations, or upgrade to Pro for the most capable model.',
+    'Nexa AI pricing: start free with monthly credits, then grow into Starter, Pro or Agency for the full Brand Kit, a marketing calendar, video plans and analytics.',
 }
 
 export default async function PricingPage() {
@@ -23,24 +23,27 @@ export default async function PricingPage() {
       <main>
         <section className="mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-brand-600">
-              Pricing
-            </p>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-brand-600">Pricing</p>
             <h1 className="mt-3 text-balance text-[36px] font-semibold leading-tight tracking-tight text-ink-900 sm:text-[48px]">
-              Simple pricing that scales with the work
+              A marketing team, priced like a tool
             </h1>
             <p className="mt-4 text-pretty text-[17px] leading-relaxed text-ink-600">
-              Everything that makes Nexa useful day to day is free. Pro adds the most capable model
-              and more room to use it.
+              Every plan runs on monthly credits. Start free with one brand; move up when you need the full Brand Kit,
+              a calendar, video plans or analytics.
             </p>
           </div>
 
           <PricingTable withHeading={false} signedIn={signedIn} />
+        </section>
 
-          <p className="mx-auto mt-10 max-w-2xl text-center text-[13.5px] leading-relaxed text-ink-500">
-            Paid plans are not yet open for self-service checkout. Create a free account and we will
-            let you know the moment Pro is available.
-          </p>
+        <section aria-labelledby="compare-heading" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+          <h2 id="compare-heading" className="mb-6 text-center text-[26px] font-semibold tracking-tight text-ink-900">
+            Compare plans
+          </h2>
+          <PlanMatrix />
+          <div className="mt-12">
+            <CreditCosts />
+          </div>
         </section>
 
         <Faq />
