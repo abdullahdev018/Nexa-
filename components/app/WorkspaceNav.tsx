@@ -12,6 +12,7 @@ import { NAV_GROUPS, activeNavItem } from '@/lib/content/navigation'
 import { planAllows, type PlanLimits } from '@/lib/billing/plans'
 import type { CreditSummary, CurrentUser, WorkspaceSummary } from '@/lib/types'
 import { cn } from '@/lib/utils/cn'
+import { ComingSoon } from '@/components/ui/ComingSoon'
 
 /**
  * The product navigation. This is what makes Nexa read as a marketing
@@ -111,13 +112,13 @@ export function WorkspaceNav({
                         )}
                         aria-hidden="true"
                       />
-                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {/* The badge sits under the name, so the name is never truncated to fit it. */}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{item.label}</span>
+                        {!item.built && <ComingSoon size="xs" className="mt-1" />}
+                      </span>
 
-                      {!item.built ? (
-                        <span className="shrink-0 rounded-full bg-ink-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-500">
-                          Soon
-                        </span>
-                      ) : locked ? (
+                      {item.built && locked ? (
                         <Lock className="h-3 w-3 shrink-0 text-ink-400" aria-label="Not on your plan" />
                       ) : null}
                     </Link>

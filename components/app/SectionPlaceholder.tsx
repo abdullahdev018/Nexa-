@@ -3,6 +3,7 @@ import { LinkButton } from '@/components/ui/Button'
 import { PageBody, PageHeader } from './PageHeader'
 import { navItem } from '@/lib/content/navigation'
 import { getPlan, planAllows, PLAN_LIST, type PlanId } from '@/lib/billing/plans'
+import { ComingSoon } from '@/components/ui/ComingSoon'
 
 /**
  * A section that is not built yet.
@@ -41,7 +42,7 @@ export function SectionPlaceholder({
             <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            <p className="text-[15px] font-semibold text-ink-900">Not built yet</p>
+            <ComingSoon />
             <p className="text-[13.5px] text-ink-600">
               This section is still being built. Nothing below is live yet.
             </p>
