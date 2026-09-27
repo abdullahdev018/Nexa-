@@ -8,12 +8,12 @@ export const metadata: Metadata = {
 }
 
 export default async function ResearchPage() {
-  const { workspace } = await requireWorkspace()
+  // Signed-in only, like every other section.
+  await requireWorkspace()
 
   return (
     <SectionPlaceholder
       href='/research'
-      plan={workspace.plan}
       detail={[
         'Give Nexa a competitor website and it summarises their positioning, messaging, offering, content themes and CTA patterns.',
         'It looks for the gaps, and suggests ideas drawn from the category rather than copied from them.',

@@ -15,6 +15,7 @@ import {
   type PlanLimits,
 } from '@/lib/billing/plans'
 import { NAV_ITEMS } from '@/lib/content/navigation'
+import { ComingSoon } from '@/components/ui/ComingSoon'
 import { cn } from '@/lib/utils/cn'
 
 /** The switch-on capabilities, in the words a pricing card would use. */
@@ -100,6 +101,9 @@ export function UpgradeDialog({
   const label = item?.label ?? CAPABILITY_LABEL[feature] ?? 'This feature'
   const current = getPlan(plan)
   const unlocks = target ? newlyUnlocked(plan, target.id) : []
+  // Announced but not built: upgrading would not give it yet, so no plan,
+  // price or upgrade button is shown until it launches.
+  const soon = UNBUILT.has(feature)
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4">
@@ -143,13 +147,20 @@ export function UpgradeDialog({
             <div
               className={cn(
                 'absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full shadow-md ring-4 ring-white/30 transition-colors duration-300',
-                unlocked ? 'bg-emerald-500' : 'bg-amber-400',
+                unlocked ? (soon ? 'bg-violet-500' : 'bg-emerald-500') : 'bg-amber-400',
               )}
             >
               {unlocked && (
-                <span className="animate-burst absolute inset-0 rounded-full bg-emerald-300" aria-hidden="true" />
+                <span
+                  className={cn('animate-burst absolute inset-0 rounded-full', soon ? 'bg-violet-300' : 'bg-emerald-300')}
+                  aria-hidden="true"
+                />
               )}
-              {unlocked ? (
+              {unlocked && soon ? (
+                <span key="soon" className="animate-unlock-pop relative text-[17px] leading-none" aria-hidden="true">
+                  🚀
+                </span>
+              ) : unlocked ? (
                 <LockOpen key="open" className="animate-unlock-pop relative h-4 w-4 text-white" strokeWidth={2.5} aria-hidden="true" />
               ) : (
                 <Lock key="shut" className="animate-lock-shake h-4 w-4 text-amber-950" aria-hidden="true" />
@@ -160,21 +171,31 @@ export function UpgradeDialog({
 
         <div className="px-6 pb-6 pt-6">
           <div className="animate-rise text-center [animation-delay:0.1s]">
-            {target && (
+            {soon ? (
+              <ComingSoon />
+            ) : target && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
                 <Crown className="h-3 w-3" aria-hidden="true" />
                 {target.name} feature
               </span>
             )}
             <h2 id={titleId} className="mt-3 text-[20px] font-semibold tracking-tight text-ink-900">
-              Unlock {label}
-              {target ? ` with ${target.name}` : ''}
+              {soon ? (
+                `${label} is coming soon`
+              ) : (
+                <>
+                  Unlock {label}
+                  {target ? ` with ${target.name}` : ''}
+                </>
+              )}
             </h2>
             {item?.description && <p className="mt-1.5 text-[14px] leading-relaxed text-ink-600">{item.description}</p>}
-            <p className="mt-2 text-[13px] text-ink-500">You&apos;re on the {current.name} plan.</p>
+            <p className="mt-2 text-[13px] text-ink-500">
+              {soon ? 'We are still building it. Check back soon!' : `You're on the ${current.name} plan.`}
+            </p>
           </div>
 
-          {target && (
+          {target && !soon && (
             <div className="animate-rise mt-5 rounded-2xl bg-gradient-to-br from-brand-50 via-raised to-indigo-50 p-4 ring-2 ring-brand-300 [animation-delay:0.2s] dark:to-indigo-500/10">
               <div>
                 <div className="flex items-baseline justify-between gap-3">
@@ -220,10 +241,31 @@ export function UpgradeDialog({
                     )
                   })}
                 </ul>
+
               </div>
             </div>
           )}
 
+          {soon ? (
+            <div className="animate-rise mt-6 flex flex-col gap-2 [animation-delay:0.3s]">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 text-[15px] font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
+              >
+                Got it <span aria-hidden="true">👍</span>
+              </button>
+              {previewHref && (
+                <Link
+                  href={previewHref}
+                  onClick={leave}
+                  className="inline-flex h-10 items-center justify-center rounded-xl text-[13.5px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+                >
+                  See what it will do
+                </Link>
+              )}
+            </div>
+          ) : (
           <div className="animate-rise mt-6 flex flex-col gap-2 [animation-delay:0.45s]">
             <Link
               ref={cta}
@@ -257,6 +299,7 @@ export function UpgradeDialog({
               </button>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>,
