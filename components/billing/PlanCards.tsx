@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { FlaskConical } from 'lucide-react'
-import { PlanHighlights } from './HighlightLine'
+import { HighlightLine } from './HighlightLine'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -107,7 +107,11 @@ export function PlanCards({
                 {formatPrice(price)}
                 <span className="text-[13px] font-normal text-ink-500"> / {yearly ? 'year' : 'month'}</span>
               </p>
-              <PlanHighlights highlights={plan.highlights} size="sm" className="mt-4 flex-1" />
+              <ul className="mt-4 flex-1 space-y-1.5">
+                {plan.highlights.map((highlight) => (
+                  <HighlightLine key={highlight.text} highlight={highlight} size="sm" />
+                ))}
+              </ul>
               {devSwitch && canAdminister && !isCurrent && (
                 <Button size="sm" variant="secondary" className="mt-5" onClick={() => switchTo(plan.id)} disabled={form.submitting}>
                   {pending === plan.id ? <Spinner label="Switching" /> : `Switch to ${plan.name} (dev)`}

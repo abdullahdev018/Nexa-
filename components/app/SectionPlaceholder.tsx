@@ -3,7 +3,6 @@ import { LinkButton } from '@/components/ui/Button'
 import { PageBody, PageHeader } from './PageHeader'
 import { navItem } from '@/lib/content/navigation'
 import { getPlan, planAllows, PLAN_LIST, type PlanId } from '@/lib/billing/plans'
-import { ComingSoon } from '@/components/ui/ComingSoon'
 
 /**
  * A section that is not built yet.
@@ -36,44 +35,58 @@ export function SectionPlaceholder({
     <PageBody>
       <PageHeader title={item.label} description={item.description} />
 
-      <div className="rounded-2xl border border-ink-200 bg-raised p-6 shadow-xs sm:p-8">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-            <Icon className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div>
-            <ComingSoon />
-            <p className="text-[13.5px] text-ink-600">
-              This section is still being built. Nothing below is live yet.
-            </p>
+      <div className="animate-rise overflow-hidden rounded-3xl border border-ink-200 bg-raised shadow-sm">
+        <div className="relative overflow-hidden bg-gradient-to-br from-amber-100 via-pink-100 to-violet-200 px-6 py-10 text-center dark:from-amber-400/15 dark:via-pink-400/10 dark:to-violet-500/20 sm:py-12">
+          <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+            <span className="animate-float absolute left-[12%] top-[20%] text-lg">✨</span>
+            <span className="animate-float absolute right-[14%] top-[26%] text-xl [animation-delay:0.7s]">⭐</span>
+            <span className="animate-float absolute bottom-[14%] left-[9%] text-base [animation-delay:1.2s]">✨</span>
+            <span className="animate-float absolute bottom-[14%] right-[10%] text-base [animation-delay:0.4s]">💫</span>
           </div>
-        </div>
 
-        <div className="mt-6 border-t border-ink-200 pt-6">
-          <p className="text-[13px] font-semibold uppercase tracking-wider text-ink-500">
-            What it will do
+          <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
+            <div className="animate-glow absolute inset-0 rounded-full bg-white/70 blur-md dark:bg-white/10" aria-hidden="true" />
+            <span className="animate-float relative text-[52px] leading-none [animation-duration:2.6s]" aria-hidden="true">
+              🚀
+            </span>
+          </div>
+
+          <p className="relative mt-4 text-[30px] font-extrabold uppercase tracking-tight text-ink-900 sm:text-[36px]">
+            Coming soon!
           </p>
-          <ul className="mt-3 space-y-2">
-            {detail.map((line) => (
-              <li key={line} className="flex gap-2.5 text-[14.5px] leading-relaxed text-ink-700">
-                <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-ink-400" />
-                {line}
-              </li>
-            ))}
-          </ul>
+          <p className="relative mx-auto mt-2 inline-flex max-w-md items-center gap-2 text-[14.5px] text-ink-700">
+            <Icon className="h-4 w-4 shrink-0 text-ink-500" aria-hidden="true" />
+            {item.label} is on its way. Nothing here is live yet.
+          </p>
         </div>
 
-        {locked && needed && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-ink-50 p-4 ring-1 ring-ink-200">
-            <p className="inline-flex items-center gap-2 text-[13.5px] text-ink-700">
-              <Lock className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
-              Included from {needed.name}. You are on {getPlan(plan).name}.
+        <div className="p-6 sm:p-8">
+          <div>
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-ink-500">
+              What it will do
             </p>
-            <LinkButton href="/billing#plans-heading" size="sm" variant="secondary">
-              Compare plans
-            </LinkButton>
+            <ul className="mt-3 space-y-2">
+              {detail.map((line) => (
+                <li key={line} className="flex gap-2.5 text-[14.5px] leading-relaxed text-ink-700">
+                  <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-ink-400" />
+                  {line}
+                </li>
+              ))}
+            </ul>
           </div>
-        )}
+
+          {locked && needed && (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-ink-50 p-4 ring-1 ring-ink-200">
+              <p className="inline-flex items-center gap-2 text-[13.5px] text-ink-700">
+                <Lock className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
+                Included from {needed.name}. You are on {getPlan(plan).name}.
+              </p>
+              <LinkButton href="/billing#plans-heading" size="sm" variant="secondary">
+                Compare plans
+              </LinkButton>
+            </div>
+          )}
+        </div>
       </div>
     </PageBody>
   )

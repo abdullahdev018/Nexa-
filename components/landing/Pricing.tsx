@@ -13,9 +13,8 @@ import {
 } from '@/lib/billing/plans'
 import { NEXA_MODELS, canUseModel } from '@/lib/ai/models'
 import { cn } from '@/lib/utils/cn'
-import { PlanHighlights } from '@/components/billing/HighlightLine'
+import { HighlightLine } from '@/components/billing/HighlightLine'
 import { Section, SectionHeading } from './Section'
-import { ComingSoon } from '@/components/ui/ComingSoon'
 
 /**
  * Every price, allowance and line on these cards comes from the plan config
@@ -73,7 +72,11 @@ export function PricingTable({
               {signedIn ? 'See your plan' : 'Start free'}
             </LinkButton>
 
-            <PlanHighlights highlights={plan.highlights} className="mt-6 border-t border-ink-200 pt-6" />
+            <ul className="mt-6 space-y-2.5 border-t border-ink-200 pt-6">
+              {plan.highlights.map((highlight) => (
+                <HighlightLine key={highlight.text} highlight={highlight} />
+              ))}
+            </ul>
           </div>
         ))}
       </div>
@@ -124,7 +127,7 @@ export function CreditCosts() {
   )
 }
 
-/** A row that is a plan capability not built yet shows "Coming soon" wherever it is included. */
+/** A row that is a plan capability not built yet shows "Soon" wherever it is included. */
 const UNBUILT_ROWS = {
   competitorResearch: 'Competitor research',
   clientWorkspaces: 'Client workspaces',
@@ -191,7 +194,7 @@ export function PlanMatrix() {
                     {soon ? (
                       <span className="text-ink-500">
                         {value === true ? '' : `${value} `}
-                        <ComingSoon size="xs" />
+                        <span className="rounded-full bg-ink-100 px-1.5 py-px text-[11px] font-medium text-ink-600">Soon</span>
                       </span>
                     ) : value === true ? (
                       <Check className="mx-auto h-4 w-4 text-brand-600" aria-label="Included" />

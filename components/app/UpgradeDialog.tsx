@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, Check, Clock, Crown, Lock, LockOpen, Sparkles, X } from 'lucide-react'
+import { ArrowRight, Check, Crown, Lock, LockOpen, Sparkles, X } from 'lucide-react'
 import {
   PLAN_LIST,
   UNBUILT,
@@ -15,7 +15,6 @@ import {
   type PlanLimits,
 } from '@/lib/billing/plans'
 import { NAV_ITEMS } from '@/lib/content/navigation'
-import { ComingSoon } from '@/components/ui/ComingSoon'
 import { cn } from '@/lib/utils/cn'
 
 /** The switch-on capabilities, in the words a pricing card would use. */
@@ -101,7 +100,6 @@ export function UpgradeDialog({
   const label = item?.label ?? CAPABILITY_LABEL[feature] ?? 'This feature'
   const current = getPlan(plan)
   const unlocks = target ? newlyUnlocked(plan, target.id) : []
-  const comingSoon = target ? target.highlights.filter((line) => line.soon).map((line) => line.text) : []
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4">
@@ -222,20 +220,6 @@ export function UpgradeDialog({
                     )
                   })}
                 </ul>
-
-                {comingSoon.length > 0 && (
-                  <div className="mt-3.5 rounded-xl border border-dashed border-amber-300/80 bg-amber-50/60 p-2.5 dark:border-amber-400/30 dark:bg-amber-400/5">
-                    <ComingSoon size="xs" />
-                    <ul className="mt-2 space-y-1.5">
-                      {comingSoon.map((line) => (
-                        <li key={line} className="flex items-start gap-2 text-[13px] text-ink-600">
-                          <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true" />
-                          {line}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             </div>
           )}
